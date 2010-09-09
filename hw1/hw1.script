@@ -1,0 +1,11 @@
+#!/bin/sh
+
+touch hw1.results
+echo "1A" | cat >> hw1.results
+/usr/bin/time -f="HP 1 execution time: %e seconds\n" hw1.1 1 | cat >> hw1.results
+echo "1B" | cat >> hw1.results
+/usr/bin/time -f="HP 10 execution time: %e seconds\n" hw1.1 10 | cat >> hw1.results
+echo "2A" | cat >> hw1.results 
+/usr/bin/time -f="LJ 1 execution time: %e seconds\n" hw1.2 1 | cat >> hw1.results
+echo "2B" | cat >> hw1.results
+/usr/bin/time -f="LJ 10 execution time: %e seconds\n" hw1.2 10 | cat >> hw1.results
