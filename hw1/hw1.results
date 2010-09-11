@@ -1,92 +1,10 @@
 1A
-
-CONFIG #1
-Energy = -8
 1B
-
-CONFIG #1
-Energy = -8
-
-CONFIG #2
-Energy = -14
-
-CONFIG #3
-Energy = -9
-
-CONFIG #4
-Energy = -4
-
-CONFIG #5
-Energy = -6
-
-CONFIG #6
-Energy = -3
-
-CONFIG #7
-Energy = -4
-
-CONFIG #8
-Energy = -12
-
-CONFIG #9
-Energy = -7
-
-CONFIG #10
-Energy = -7
 2A
-
-CONFIG #1
-LJ Energy = -463.8078256
-Force Vector on Particle 108 = (1.065600466, 0.128080096, 0.03333936423)
-
 2B
-
-CONFIG #1
-LJ Energy = -469.559312
-Force Vector on Particle 108 = (1.084963625, 0.1133626887, 0.05008858483)
-
-
-CONFIG #2
-LJ Energy = -476.1940814
-Force Vector on Particle 108 = (1.093686718, 0.1124170179, 0.05266741602)
-
-
-CONFIG #3
-LJ Energy = -482.763806
-Force Vector on Particle 108 = (1.121281605, 0.09560490816, 0.07975278516)
-
-
-CONFIG #4
-LJ Energy = -486.9425246
-Force Vector on Particle 108 = (1.095004713, 0.1164499383, 0.05595893693)
-
-
-CONFIG #5
-LJ Energy = -487.9461538
-Force Vector on Particle 108 = (1.129103022, 0.1184694757, 0.04136455144)
-
-
-CONFIG #6
-LJ Energy = -491.4741877
-Force Vector on Particle 108 = (1.124098698, 0.09908647794, 0.04658725461)
-
-
-CONFIG #7
-LJ Energy = -496.5644506
-Force Vector on Particle 108 = (1.159909885, 0.1429036378, 0.05160762816)
-
-
-CONFIG #8
-LJ Energy = -500.5974288
-Force Vector on Particle 108 = (1.157209158, 0.1355326685, 0.03894204608)
-
-
-CONFIG #9
-LJ Energy = -504.1312869
-Force Vector on Particle 108 = (1.177949309, 0.1345602926, 0.03184023572)
-
-
-CONFIG #10
-LJ Energy = -505.7944089
-Force Vector on Particle 108 = (1.197811298, 0.1342131515, -0.04336548761)
-
+3 - EXTRA CREDIT
+1A
+1B
+2A
+2B
+3 - EXTRA CREDIT

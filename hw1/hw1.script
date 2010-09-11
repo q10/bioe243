@@ -9,3 +9,8 @@ echo "2A" | cat >> hw1.results
 /usr/bin/time -f="LJ 1 execution time: %e seconds\n" hw1.2 1 | cat >> hw1.results
 echo "2B" | cat >> hw1.results
 /usr/bin/time -f="LJ 10 execution time: %e seconds\n" hw1.2 10 | cat >> hw1.results
+echo "3C - Pushing random numbers to randu.dat and ran3.dat"
+hw1.3 randu | cat > randu.dat &
+hw1.3 ran3 | cat > ran3.dat &
+echo "3 - EXTRA CREDIT" | cat >> hw1.results
+hw1.3 circle | cat >> hw1.results &
