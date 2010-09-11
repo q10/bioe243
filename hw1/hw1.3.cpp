@@ -14,13 +14,13 @@ int main( int argc, char **argv ) {
     return -1;
   }
 
-  if ((argv[1] == "randu") || (argv[1] == "ran3")) {
+  if ((strcmp(argv[1],"randu") == 0) || (strcmp(argv[1],"ran3") == 0)) {
     double tmp_x, tmp_y, tmp_z;
 
     // generate random numbers with either RANDU and RAN3
     for (int i=0; i<NUM_DRUG_MOLECS; i++) {
 
-      if (argv[1] == "randu") {
+      if (strcmp(argv[1],"randu") == 0) {
 	tmp_x = randu(MY_SEED);
 	tmp_y = randu(MY_SEED);
 	tmp_z = randu(MY_SEED);
@@ -39,7 +39,7 @@ int main( int argc, char **argv ) {
     }
   }
 
-  else if (argv[1] == "randu") {   
+  else if (strcmp(argv[1],"circle") == 0) {   
     int circle_points=0, total_points=0;
     double x, y, r;
 
