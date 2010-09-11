@@ -1,6 +1,5 @@
 #include "common.h"
 
-#define BUF_SIZE 256
 #define NUM_DRUG_MOLECS 1000000
 #define MY_SEED 437197
 
@@ -10,48 +9,65 @@ double ran3( int init );
 const unsigned int IMAX = (unsigned int)pow(2.0,31.0); 
 
 int main( int argc, char **argv ) {
-
-  // declare vars
-  double RANDU_Particles[NUM_DRUG_MOLECS][3];
-  double RAN3_Particles[NUM_DRUG_MOLECS][3];
-  int circle_points=0, total_points=0;
-
   if (argc < 2) {
-    std::cout << "Program must be invoked with argument of form \'randu\', \'ran3\', or \'circle\'\n\n";  
+    std::cout << "Program must be invoked with argument of form \'randu\', \'ran3\', or \'circle\'\n\n";
+    return -1;
   }
 
-  // generate random numbers with both RANDU and RAN3
-  for (int i=0; i<NUM_DRUG_MOLECS; i++) {
+  if ((argv[1] == "randu") || (argv[1] == "ran3")) {
+    int tmp_x, tmp_y, tmp_z;
+
+    // generate random numbers with either RANDU and RAN3
+    for (int i=0; i<NUM_DRUG_MOLECS; i++) {
+
+      if (argv[1] == "randu") {
+	tmp_x = randu(MY_SEED);
+	tmp_y = randu(MY_SEED);
+	tmp_z = randu(MY_SEED);
+      }
+      else {
+	tmp_x = ran3(MY_SEED);
+	tmp_y = ran3(MY_SEED);
+	tmp_z = ran3(MY_SEED);
+      }
+      
+      // print values to stdout
+      std::cout << setprecision(10)
+		<< tmp_x << "\t"
+		<< tmp_y << "\t" 
+		<< tmp_z << "\n";
+    }
+  }
+
+  else if (argv[1] == "randu") {   
+    int circle_points=0, total_points=0;
+    double x, y, r;
+
+    for (int i=0; i<1000000000; i++) {
+      x = 2.0*ran3(MY_SEED) - 1.0;
+      y = 2.0*ran3(MY_SEED) - 1.0;
+      r = sqrt(pow(x,2) + pow(y,2));
+
+      if (r < 1)
+	circle_points++;
+
+      total_points++;
     
-    RANDU_Particles[i][0] = randu(MY_SEED);
-    RANDU_Particles[i][1] = randu(MY_SEED);
-    RANDU_Particles[i][2] = randu(MY_SEED);
-
-    RAN3_Particles[i][0] = ran3(MY_SEED);
-    RAN3_Particles[i][1] = ran3(MY_SEED);
-    RAN3_Particles[i][2] = ran3(MY_SEED);
-
-    // print values
-    /*std::cout << setprecision(10)
-	      << RANDU_Particles[i][0] << " "
-	      << RANDU_Particles[i][1] << " " 
-	      << RANDU_Particles[i][2] << "\t\t"
-	      << RANDU_Particles[i][0] << " "
-	      << RANDU_Particles[i][1] << " " 
-	      << RANDU_Particles[i][2] << "\n";*/
+      if ((i==9) || (i==99) || (i==999) || (i==9999) ||
+	  (i==99999) || (i==999999) || (i==9999999) || (i==99999999) ||
+	  (i==999999999)) {
+	std::cout << "Ratio of Circle to Total Points (PI/4) at "
+		  << i+1 << " trials = "
+		  << setprecision(10)
+		  << (double)circle_points/(double)total_points << endl;
+      }
   }
 
-  double x, y, r;
-  for (int i=0; i<NUM_DRUG_MOLECS; i++) {
-    x = 2.0*ran3(MY_SEED) - 1.0;
-    y = 2.0*ran3(MY_SEED) - 1.0;
-    r = sqrt(pow(x,2) + pow(y,2));
-    if (r < 1)
-      circle_points++;
-    total_points++;
+  else {
+    std::cout << "Argument must be \'randu\', \'ran3\' or \'circle\'\n\n";
+    return -1;
   }
-  std::cout << "Ratio of Circle to Total Points = " << (double)circle_points/(double)total_points << endl;
-
+  
   return 0;
 }
 
