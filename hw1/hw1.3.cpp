@@ -15,7 +15,7 @@ int main( int argc, char **argv ) {
   }
 
   if ((argv[1] == "randu") || (argv[1] == "ran3")) {
-    int tmp_x, tmp_y, tmp_z;
+    double tmp_x, tmp_y, tmp_z;
 
     // generate random numbers with either RANDU and RAN3
     for (int i=0; i<NUM_DRUG_MOLECS; i++) {
@@ -59,8 +59,9 @@ int main( int argc, char **argv ) {
 	std::cout << "Ratio of Circle to Total Points (PI/4) at "
 		  << i+1 << " trials = "
 		  << setprecision(10)
-		  << (double)circle_points/(double)total_points << endl;
+		  << (double)circle_points/(double)total_points << "\n";
       }
+    }
   }
 
   else {
