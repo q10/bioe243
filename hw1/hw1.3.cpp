@@ -54,8 +54,7 @@ int main( int argc, char **argv ) {
       total_points++;
     
       if ((i==9) || (i==99) || (i==999) || (i==9999) ||
-	  (i==99999) || (i==999999) || (i==9999999) || (i==99999999) ||
-	  (i==999999999)) {
+	  (i==99999) || (i==999999) || (i==9999999) || (i==99999999) || (i==999999999)) {
 	std::cout << "Ratio of Circle to Total Points (PI/4) at "
 		  << i+1 << " trials = "
 		  << setprecision(10)

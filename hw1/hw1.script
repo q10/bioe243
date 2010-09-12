@@ -1,16 +1,20 @@
 #!/bin/sh
 
 touch hw1.results
+touch randu.dat
+touch ran3.dat
+
 echo "1A" | cat >> hw1.results
-/usr/bin/time -f="HP 1 execution time: %e seconds\n" hw1.1 1 | cat >> hw1.results
-echo "1B" | cat >> hw1.results
-/usr/bin/time -f="HP 10 execution time: %e seconds\n" hw1.1 10 | cat >> hw1.results
-echo "2A" | cat >> hw1.results 
-/usr/bin/time -f="LJ 1 execution time: %e seconds\n" hw1.2 1 | cat >> hw1.results
-echo "2B" | cat >> hw1.results
-/usr/bin/time -f="LJ 10 execution time: %e seconds\n" hw1.2 10 | cat >> hw1.results
-echo "3C - Pushing random numbers to randu.dat and ran3.dat"
-hw1.3 randu | cat > randu.dat &
-hw1.3 ran3 | cat > ran3.dat &
-echo "3 - EXTRA CREDIT" | cat >> hw1.results
-hw1.3 circle | cat >> hw1.results &
+/usr/bin/time -f "HP_1 execution time: %e seconds\n" ./hw1.1 1 | cat >> hw1.results
+echo "\n1B" | cat >> hw1.results
+/usr/bin/time -f "HP_10 execution time: %e seconds\n" ./hw1.1 10 | cat >> hw1.results
+echo "\n2A" | cat >> hw1.results 
+/usr/bin/time -f "LJ_1 execution time: %e seconds\n" ./hw1.2 1 | cat >> hw1.results
+echo "\n2B" | cat >> hw1.results
+/usr/bin/time -f "LJ_10 execution time: %e seconds\n" ./hw1.2 10 | cat >> hw1.results
+echo "\n3C - Pushing random numbers to randu.dat and ran3.dat"
+./hw1.3 randu | cat > randu.dat &
+./hw1.3 ran3 | cat > ran3.dat &
+echo "calculating PI/4 with 1E+10 MC trials (this may take a while)..."
+echo "\n3 - EXTRA CREDIT" | cat >> hw1.results
+./hw1.3 circle | cat >> hw1.results
