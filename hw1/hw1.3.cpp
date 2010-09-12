@@ -1,7 +1,7 @@
 #include "common.h"
 
 #define NUM_DRUG_MOLECS 1000000
-#define MY_SEED 437197
+#define MY_SEED 437197 // some random number that is odd, as required for the RANDU seed
 
 double randu( unsigned int init );
 double ran3( int init );
@@ -39,6 +39,7 @@ int main( int argc, char **argv ) {
     }
   }
 
+  // generate points inside unit square (MC integration)
   else if (strcmp(argv[1],"circle") == 0) {   
     int circle_points=0, total_points=0;
     double x, y, r;
@@ -48,11 +49,13 @@ int main( int argc, char **argv ) {
       y = 2.0*ran3(MY_SEED) - 1.0;
       r = sqrt(pow(x,2) + pow(y,2));
 
+      // if point is inside circle, then count it
       if (r < 1)
 	circle_points++;
 
       total_points++;
     
+      // print estimated value of PI/4 at each interval of 10 power
       if ((i==9) || (i==99) || (i==999) || (i==9999) ||
 	  (i==99999) || (i==999999) || (i==9999999) || (i==99999999) || (i==999999999)) {
 	std::cout << "Ratio of Circle to Total Points (PI/4) at "
