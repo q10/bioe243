@@ -86,13 +86,13 @@ int main( int argc, char **argv ) {
 	LJEnergy += 4.0 * (pow((1/r),12) - pow((1/r),6));
 	tmp_force = 24 * ((2 * pow((1/r),12)) - pow((1/r),6));
       
-	forces[i][0] -= (tmp_force * dx / pow((1/r),2));
-	forces[i][1] -= (tmp_force * dy / pow((1/r),2));
-	forces[i][2] -= (tmp_force * dz / pow((1/r),2));
+	forces[i][0] -= (tmp_force * dx / pow(r,2));
+	forces[i][1] -= (tmp_force * dy / pow(r,2));
+	forces[i][2] -= (tmp_force * dz / pow(r,2));
 
-	forces[j][0] += (tmp_force * dx / pow((1/r),2));
-	forces[j][1] += (tmp_force * dy / pow((1/r),2));
-	forces[j][2] += (tmp_force * dz / pow((1/r),2));      
+	forces[j][0] += (tmp_force * dx / pow(r,2));
+	forces[j][1] += (tmp_force * dy / pow(r,2));
+	forces[j][2] += (tmp_force * dz / pow(r,2));      
       }
     }
 
