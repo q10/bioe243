@@ -21,20 +21,39 @@ int main( int argc, char **argv ) {
     return -1;
   }
 
+  // set up and init all averages to zero
   double averages[ntrials];
   for (int i=0; i<ntrials; i++) {
     averages[i]=0.0;
   }
 
+  // set up and init histogram to all zeros
+  int histogram_intervals = 20;
+  int histogram[histogram_intervals];
+  for (int i=0; i<histogram_intervals; i++)
+    histogram[i] = 0;
+
+  // generate random numbers for nstep times
   for (int i=0; i<ntrials; i++) {
     for (int j=0; j<nsteps; j++) {
       averages[i] += ran3 (MY_SEED);
     }
   }
-
+  
+  // generate histogram of averages with 0.05-length intervals
   for (int i=0; i<ntrials; i++) {
-    std::cout << averages[i]/nsteps << std::endl;
+    averages[i] /= (double)nsteps; // average the random numbers for each trial first
+    for (int j=1; j<=histogram_intervals; j++) {
+      if (averages[i] < (double)j/((double)histogram_intervals)) {
+	histogram[j-1]++;
+	break;
+      }
+    }
   }
+  
+  // print histogram
+  for (int i=0; i<histogram_intervals; i++)
+    std::cout << histogram[i] << std::endl;
 
   return 0;
 }

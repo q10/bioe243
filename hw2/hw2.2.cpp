@@ -1,7 +1,7 @@
 #include "common.h"
 #include "common.cpp"
 
-#define MY_SEED 42709783
+#define MY_SEED 279683937
 
 std::vector<std::vector<int> > validPositions(int particle_positions[][2], int size, int current_x, int current_y);
 
@@ -21,19 +21,26 @@ int main( int argc, char **argv ) {
     return -1;
   }
   
-  // if type 1 random walk, then we only need to save end position; else we need to save position on all steps
-  int N = 100, particle_positions[N][2];
+  // set up and init histogram to all zeros
+  int histogram_intervals = 20;
+  int histogram[histogram_intervals];
+  for (int i=0; i<histogram_intervals; i++)
+    histogram[i] = 0;
+
+  // init particle_positions and end_to_end_distances arrays and flag
+  int length_N = 100, num_conformations = 100, particle_positions[length_N][2];
+  double end_to_end_distances[num_conformations];
   bool failed_type_two = false;
 
-  for (int conformation_number=0; conformation_number<100; conformation_number++) {
+  for (int conformation_number=0; conformation_number<num_conformations; conformation_number++) {
     
     // init array to zero to ensure clean slate (for easier debugging)
-    for (int i=0; i<N; i++) 
+    for (int i=0; i<length_N; i++) 
       for (int j=0; j<2; j++)
 	particle_positions[i][j] = 0;
     
     // grow protein, starting with array position 1 (position 0 is fixed to (0,0)
-    for (int i=1; i<N; i++) {    
+    for (int i=1; i<length_N; i++) {    
       // if we are running type-1 random walk
       if (type_one) {
 	// set to old position first
@@ -72,13 +79,32 @@ int main( int argc, char **argv ) {
       continue;
     }
     
-    // after each conformation generated, print distant from end point to (0,0) (end-to-end distance)
-    std::cout << setprecision(10)
-	      << sqrt(pow((double)particle_positions[N-1][0],2) + 
-		      pow((double)particle_positions[N-1][1],2)) << std::endl;
+    // after each conformation generated, save its end-to-end distance (end point to (0,0))
+    end_to_end_distances[conformation_number] = sqrt(pow((double)particle_positions[length_N-1][0],2) + 
+						     pow((double)particle_positions[length_N-1][1],2));
   }
 
-  return 0;
+  // find max end-to-end distance; for histogram use
+  double max_end_to_end_distance = 0.0;
+  for (int i=0; i<num_conformations; i++)
+    max_end_to_end_distance = max(max_end_to_end_distance, end_to_end_distances[i]);
+
+  // generate histogram of end-to-end distances with 1.0-length intervals
+  for (int i=0; i<num_conformations; i++) {
+    for (int j=1; j<=histogram_intervals; j++) {
+      if (end_to_end_distances[i] < (max_end_to_end_distance*(double)j)/((double)histogram_intervals)) {
+	histogram[j-1]++;
+	break;
+      }
+    }
+  }
+  
+  // print histogram
+  
+  for (int i=0; i<histogram_intervals; i++)
+    std::cout << histogram[i] << std::endl;
+  
+    return 0;
 }
 
 
