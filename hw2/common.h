@@ -18,6 +18,7 @@
 #include <float.h>
 #include <stdarg.h>
 #include <iomanip>
+#include <algorithm>
 
 using namespace std;
 double ran3 (int init);
