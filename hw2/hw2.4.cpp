@@ -12,6 +12,7 @@ void set_amino_acid_coords(int index, int new_x, int new_y, int new_z);
 bool accepted(double new_U);
 bool corner_flip_possible(int index);
 int crankshafts_possible(int index);
+void crankshafts_possible_subproc(int index, int** possible_pairs);
 int end_moves_possible(int index);
 void flip_corner(int index);
 void crankshaft(int index, int num_choices);
@@ -22,8 +23,8 @@ void clear_old_data();
 // (no need to pass-by-value or worry about pointer syntax)
 const int NUM_AMINO_ACIDS = 36;
 const char AMINO_ACID_TYPE[NUM_AMINO_ACIDS+1] = "HHPHHPPHPPPHPPHPHHHHPPPPHHPPHPHHHHPP";
-int NCYCLES, amino_acids[NUM_AMINO_ACIDS][4], neighbors[6][3]; // 4th param of amino acids array is individual particle energy
-double current_U, new_U, average_U, average_U_2, T;
+int NCYCLES, amino_acids[NUM_AMINO_ACIDS][3], neighbors[6][3]; // 4th param of amino acids array is individual particle energy
+double current_U, new_U, average_U, average_U_2, T, amino_acid_energies[NUM_AMINO_ACIDS];
 
 // these variables used for storing next available coordinates for moving into, 
 // and for storing the old coordinates in case move is rejected
@@ -43,9 +44,9 @@ int main( int argc, char **argv ) {
     for (int j=0; j<NUM_AMINO_ACIDS; j++) {   
       
       double tmp_new_energy = (energy_of_individual_amino_acid(j) / 2.0);
-      new_U = current_U - amino_acids[j][3]  + tmp_new_energy;
+      new_U = current_U - amino_acid_energies[j]  + tmp_new_energy;
       if (accepted(new_U)) {
-	amino_acids[j][3] = tmp_new_energy;
+	amino_acid_energies[j] = tmp_new_energy;
 	current_U = new_U;
       }
       else {
@@ -70,8 +71,8 @@ int main( int argc, char **argv ) {
 void initialize_energies() {
   current_U = 0.0, average_U = 0.0, average_U_2  = 0.0;
   for (int i=0; i<NUM_AMINO_ACIDS; i++) {    
-    amino_acids[i][3] = energy_of_individual_amino_acid(i);
-    average_U += amino_acids[i][3];
+    amino_acid_energies[i] = energy_of_individual_amino_acid(i);
+    average_U += amino_acid_energies[i];
   }
   average_U /= 2.0; // account for double-counting the energy
   current_U = average_U;
@@ -203,12 +204,96 @@ bool corner_flip_possible(int index) {
 // returns the number of crankshafts possible with amino acid index and index+1, and 
 // places the new coords in pairs into available_next_coords' row 0-5
 int crankshafts_possible(int index) {
-  int num_crankshafts_possible = 0;
 
-
-
-
+  /* The crankshaft will be referred to as follows
+                     (index)____________(index+1)
+                        |                   |
+                        |                   |
+                        |                   |
+     (index-2)______(index-1)           (index+2)______(index+3)
+  */
+  
+  // The crankshaft cannot be performed on the first two or last two amino acids
+  if (index < 2 || index > NUM_AMINO_ACIDS-3)
+    return 0;
+  
+  int num_crankshafts_possible = 0, crankshafts_possible_subproc(index), possible_pairs[8][3];
+  crankshafts_possible_subproc(index, possible_pairs);
   return num_crankshafts_possible;
+}
+
+// this subproc finds out the common axis coords that (index-2), (index-1), (index+2), (index+3) have
+// this subproc is to make crankshafts_possible look simpler
+// if they have same X and Y, the code returned is 4
+// if X and Z, code returned is 6
+// if Y and Z, code returned is 8
+void crankshafts_possible_subproc(int index, int** possible_pairs) {
+  int code = 0;
+  if (amino_acids[index-2][0] == amino_acids[index-1][0] &&
+      amino_acids[index-1][0]  == amino_acids[index+2][0] &&
+      amino_acids[index+2][0] == amino_acids[index+3][0])
+    code++;
+  if (amino_acids[index-2][1] == amino_acids[index-1][1] &&
+      amino_acids[index-1][1]  == amino_acids[index+2][1] &&
+      amino_acids[index+2][1] == amino_acids[index+3][1])
+    code += 3;
+  if (amino_acids[index-2][2] == amino_acids[index-1][2] &&
+      amino_acids[index-1][2]  == amino_acids[index+2][2] &&
+      amino_acids[index+2][2] == amino_acids[index+3][2])
+    code += 5;
+
+  if (code == 4 || code == 6) {
+    possible_pairs[0][0] = amino_acids[index-1][0]+1;
+    possible_pairs[0][1] = amino_acids[index-1][1];
+    possible_pairs[0][2] = amino_acids[index-1][2];
+    
+    possible_pairs[1][0] = amino_acids[index+2][0]+1;
+    possible_pairs[1][1] = amino_acids[index+2][1];
+    possible_pairs[1][2] = amino_acids[index+2][2];
+  
+    possible_pairs[2][0] = amino_acids[index-1][0]-1;
+    possible_pairs[2][1] = amino_acids[index-1][1];
+    possible_pairs[2][2] = amino_acids[index-1][2];
+    
+    possible_pairs[3][0] = amino_acids[index+2][0]-1;
+    possible_pairs[3][1] = amino_acids[index+2][1];
+    possible_pairs[3][2] = amino_acids[index+2][2];
+  }
+  if (code == 4 || code == 8) {
+    possible_pairs[4][0] = amino_acids[index-1][0];
+    possible_pairs[4][1] = amino_acids[index-1][1]+1;
+    possible_pairs[4][2] = amino_acids[index-1][2];
+    
+    possible_pairs[5][0] = amino_acids[index+2][0];
+    possible_pairs[5][1] = amino_acids[index+2][1]+1;
+    possible_pairs[5][2] = amino_acids[index+2][2];
+    
+    possible_pairs[6][0] = amino_acids[index-1][0];
+    possible_pairs[6][1] = amino_acids[index-1][1]-1;
+    possible_pairs[6][2] = amino_acids[index-1][2];
+    
+    possible_pairs[7][0] = amino_acids[index+2][0];
+    possible_pairs[7][1] = amino_acids[index+2][1]-1;
+    possible_pairs[7][2] = amino_acids[index+2][2];
+  }
+  if (code == 6 || code == 8) {
+    possible_pairs[4][0] = amino_acids[index-1][0];
+    possible_pairs[4][1] = amino_acids[index-1][1];
+    possible_pairs[4][2] = amino_acids[index-1][2]+1;
+    
+    possible_pairs[5][0] = amino_acids[index+2][0];
+    possible_pairs[5][1] = amino_acids[index+2][1];
+    possible_pairs[5][2] = amino_acids[index+2][2]+1;
+    
+    possible_pairs[6][0] = amino_acids[index-1][0];
+    possible_pairs[6][1] = amino_acids[index-1][1];
+    possible_pairs[6][2] = amino_acids[index-1][2]-1;
+    
+    possible_pairs[7][0] = amino_acids[index+2][0];
+    possible_pairs[7][1] = amino_acids[index+2][1];
+    possible_pairs[7][2] = amino_acids[index+2][2]-1;
+  }
+  return;
 }
 
 // returns the number of coords possible for end amino acid to move to and 
