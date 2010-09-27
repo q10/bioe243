@@ -12,7 +12,7 @@ void set_amino_acid_coords(int index, int new_x, int new_y, int new_z);
 bool accepted(double new_U);
 bool corner_flip_possible(int index);
 int crankshafts_possible(int index);
-void crankshafts_possible_subproc(int index, int** possible_pairs);
+void crankshafts_possible_subproc(int index);
 int end_moves_possible(int index);
 void flip_corner(int index);
 void crankshaft(int index, int num_choices);
@@ -32,7 +32,7 @@ double current_U, new_U, average_U, average_U_2, T, amino_acid_energies[NUM_AMIN
 // current_coords_being_displaced has 2 possible amino acids moved max per MC move (crankshaft)
 int current_coords_being_displaced[2][3];
 int available_next_coords[6][3];
-
+int crankshaft_possible_pairs[8][3];
 
 int main( int argc, char **argv ) {
 
@@ -217,8 +217,29 @@ int crankshafts_possible(int index) {
   if (index < 2 || index > NUM_AMINO_ACIDS-3)
     return 0;
   
-  int num_crankshafts_possible = 0, crankshafts_possible_subproc(index), possible_pairs[8][3];
-  crankshafts_possible_subproc(index, possible_pairs);
+  int num_crankshafts_possible = 0;
+  crankshafts_possible_subproc(index);
+  for (int i=0; i<4; i++) {
+    if (find_amino_acid_in_this_coordinate(crankshaft_possible_pairs[2*i][0], 
+					   crankshaft_possible_pairs[2*i][1], 
+					   crankshaft_possible_pairs[2*i][2]) < 0 &&
+	find_amino_acid_in_this_coordinate(crankshaft_possible_pairs[(2*i)+1][0], 
+					   crankshaft_possible_pairs[(2*i)+1][1], 
+					   crankshaft_possible_pairs[(2*i)+1][2]) < 0) {
+      // copy coords (index)
+      available_next_coords[2*num_crankshafts_possible][0] = crankshaft_possible_pairs[2*i][0];
+      available_next_coords[2*num_crankshafts_possible][1] = crankshaft_possible_pairs[2*i][1];
+      available_next_coords[2*num_crankshafts_possible][2] = crankshaft_possible_pairs[2*i][2];
+
+      // copy coords (index+1)
+      available_next_coords[(2*num_crankshafts_possible)+1][0] = crankshaft_possible_pairs[(2*i)+1][0];
+      available_next_coords[(2*num_crankshafts_possible)+1][1] = crankshaft_possible_pairs[(2*i)+1][1];
+      available_next_coords[(2*num_crankshafts_possible)+1][2] = crankshaft_possible_pairs[(2*i)+1][2];
+      
+      // increment number of possible crankshafts
+      num_crankshafts_possible++;
+    }
+  }
   return num_crankshafts_possible;
 }
 
@@ -227,7 +248,7 @@ int crankshafts_possible(int index) {
 // if they have same X and Y, the code returned is 4
 // if X and Z, code returned is 6
 // if Y and Z, code returned is 8
-void crankshafts_possible_subproc(int index, int** possible_pairs) {
+void crankshafts_possible_subproc(int index) {
   int code = 0;
   if (amino_acids[index-2][0] == amino_acids[index-1][0] &&
       amino_acids[index-1][0]  == amino_acids[index+2][0] &&
@@ -242,56 +263,57 @@ void crankshafts_possible_subproc(int index, int** possible_pairs) {
       amino_acids[index+2][2] == amino_acids[index+3][2])
     code += 5;
 
+  int i = 0;
   if (code == 4 || code == 6) {
-    possible_pairs[0][0] = amino_acids[index-1][0]+1;
-    possible_pairs[0][1] = amino_acids[index-1][1];
-    possible_pairs[0][2] = amino_acids[index-1][2];
+    crankshaft_possible_pairs[i][0] = amino_acids[index-1][0]+1;
+    crankshaft_possible_pairs[i][1] = amino_acids[index-1][1];
+    crankshaft_possible_pairs[i++][2] = amino_acids[index-1][2];
     
-    possible_pairs[1][0] = amino_acids[index+2][0]+1;
-    possible_pairs[1][1] = amino_acids[index+2][1];
-    possible_pairs[1][2] = amino_acids[index+2][2];
+    crankshaft_possible_pairs[i][0] = amino_acids[index+2][0]+1;
+    crankshaft_possible_pairs[i][1] = amino_acids[index+2][1];
+    crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2];
   
-    possible_pairs[2][0] = amino_acids[index-1][0]-1;
-    possible_pairs[2][1] = amino_acids[index-1][1];
-    possible_pairs[2][2] = amino_acids[index-1][2];
+    crankshaft_possible_pairs[i][0] = amino_acids[index-1][0]-1;
+    crankshaft_possible_pairs[i][1] = amino_acids[index-1][1];
+    crankshaft_possible_pairs[i++][2] = amino_acids[index-1][2];
     
-    possible_pairs[3][0] = amino_acids[index+2][0]-1;
-    possible_pairs[3][1] = amino_acids[index+2][1];
-    possible_pairs[3][2] = amino_acids[index+2][2];
+    crankshaft_possible_pairs[i][0] = amino_acids[index+2][0]-1;
+    crankshaft_possible_pairs[i][1] = amino_acids[index+2][1];
+    crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2];
   }
   if (code == 4 || code == 8) {
-    possible_pairs[4][0] = amino_acids[index-1][0];
-    possible_pairs[4][1] = amino_acids[index-1][1]+1;
-    possible_pairs[4][2] = amino_acids[index-1][2];
+    crankshaft_possible_pairs[i][0] = amino_acids[index-1][0];
+    crankshaft_possible_pairs[i][1] = amino_acids[index-1][1]+1;
+    crankshaft_possible_pairs[i++][2] = amino_acids[index-1][2];
     
-    possible_pairs[5][0] = amino_acids[index+2][0];
-    possible_pairs[5][1] = amino_acids[index+2][1]+1;
-    possible_pairs[5][2] = amino_acids[index+2][2];
+    crankshaft_possible_pairs[i][0] = amino_acids[index+2][0];
+    crankshaft_possible_pairs[i][1] = amino_acids[index+2][1]+1;
+    crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2];
     
-    possible_pairs[6][0] = amino_acids[index-1][0];
-    possible_pairs[6][1] = amino_acids[index-1][1]-1;
-    possible_pairs[6][2] = amino_acids[index-1][2];
+    crankshaft_possible_pairs[i][0] = amino_acids[index-1][0];
+    crankshaft_possible_pairs[i][1] = amino_acids[index-1][1]-1;
+    crankshaft_possible_pairs[i++][2] = amino_acids[index-1][2];
     
-    possible_pairs[7][0] = amino_acids[index+2][0];
-    possible_pairs[7][1] = amino_acids[index+2][1]-1;
-    possible_pairs[7][2] = amino_acids[index+2][2];
+    crankshaft_possible_pairs[i][0] = amino_acids[index+2][0];
+    crankshaft_possible_pairs[i][1] = amino_acids[index+2][1]-1;
+    crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2];
   }
   if (code == 6 || code == 8) {
-    possible_pairs[4][0] = amino_acids[index-1][0];
-    possible_pairs[4][1] = amino_acids[index-1][1];
-    possible_pairs[4][2] = amino_acids[index-1][2]+1;
+    crankshaft_possible_pairs[i][0] = amino_acids[index-1][0];
+    crankshaft_possible_pairs[i][1] = amino_acids[index-1][1];
+    crankshaft_possible_pairs[i++][2] = amino_acids[index-1][2]+1;
     
-    possible_pairs[5][0] = amino_acids[index+2][0];
-    possible_pairs[5][1] = amino_acids[index+2][1];
-    possible_pairs[5][2] = amino_acids[index+2][2]+1;
+    crankshaft_possible_pairs[i][0] = amino_acids[index+2][0];
+    crankshaft_possible_pairs[i][1] = amino_acids[index+2][1];
+    crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2]+1;
     
-    possible_pairs[6][0] = amino_acids[index-1][0];
-    possible_pairs[6][1] = amino_acids[index-1][1];
-    possible_pairs[6][2] = amino_acids[index-1][2]-1;
+    crankshaft_possible_pairs[i][0] = amino_acids[index-1][0];
+    crankshaft_possible_pairs[i][1] = amino_acids[index-1][1];
+    crankshaft_possible_pairs[i++][2] = amino_acids[index-1][2]-1;
     
-    possible_pairs[7][0] = amino_acids[index+2][0];
-    possible_pairs[7][1] = amino_acids[index+2][1];
-    possible_pairs[7][2] = amino_acids[index+2][2]-1;
+    crankshaft_possible_pairs[i][0] = amino_acids[index+2][0];
+    crankshaft_possible_pairs[i][1] = amino_acids[index+2][1];
+    crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2]-1;
   }
   return;
 }
@@ -366,6 +388,10 @@ void clear_old_data() {
       neighbors[i][j] = 0;
     }
   }
+
+  for (int i=0; i<8; i++)
+    for (int j=0; j<8; j++)
+    crankshaft_possible_pairs[i][j] = 0;
 
   new_U = 0.0;
   return;
