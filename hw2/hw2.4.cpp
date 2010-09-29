@@ -2,9 +2,14 @@
 #include "common.cpp"
 
 #define MY_SEED 279683937
+#define BUF_SIZE 256
 
 // declare functions for use
+int grab_input_data(int argc, char **argv);
 void initialize_energies();
+bool mc_move(int index);
+void mc_accept(int index, bool making_crankshaft_move);
+void update_observables();
 double energy_of_individual_amino_acid(int i);
 void store_neighbors(int i);
 int find_amino_acid_in_this_coordinate(int x, int y, int z);
@@ -12,7 +17,7 @@ void set_amino_acid_coords(int index, int new_x, int new_y, int new_z);
 bool accepted(double new_U);
 bool corner_flip_possible(int index);
 int crankshafts_possible(int index);
-void crankshafts_possible_subproc(int index);
+int crankshafts_possible_subproc(int index);
 int end_moves_possible(int index);
 void flip_corner(int index);
 void crankshaft(int index, int num_choices);
@@ -22,49 +27,122 @@ void clear_old_data();
 // global variables - very bad programming style, but code more optimized 
 // (no need to pass-by-value or worry about pointer syntax)
 const int NUM_AMINO_ACIDS = 36;
-const char AMINO_ACID_TYPE[NUM_AMINO_ACIDS+1] = "HHPHHPPHPPPHPPHPHHHHPPPPHHPPHPHHHHPP";
-int NCYCLES, amino_acids[NUM_AMINO_ACIDS][3], neighbors[6][3]; // 4th param of amino acids array is individual particle energy
+char AMINO_ACID_TYPE[NUM_AMINO_ACIDS+1] = "HHPHHPPHPPPHPPHPHHHHPPPPHHPPHPHHHHPP";
+int NCYCLES, amino_acids[NUM_AMINO_ACIDS][3]; // 4th param of amino acids array is individual particle energy
 double current_U, new_U, average_U, average_U_2, T, amino_acid_energies[NUM_AMINO_ACIDS];
 
 // these variables used for storing next available coordinates for moving into, 
 // and for storing the old coordinates in case move is rejected
 // available_next_coords has 6 rows for 3 possible crankshafts
 // current_coords_being_displaced has 2 possible amino acids moved max per MC move (crankshaft)
-int current_coords_being_displaced[2][3];
-int available_next_coords[6][3];
-int crankshaft_possible_pairs[8][3];
+// neighbors store coordinates for the 6 neighbors
+int current_coords_being_displaced[2][3], available_next_coords[6][3], 
+  crankshaft_possible_pairs[8][3], neighbors[6][3];
 
 int main( int argc, char **argv ) {
 
-  
+  // initialize system
+  if (grab_input_data(argc, argv) < 0)
+    return -1;
   
   initialize_energies();
-  
+  /*
+  // run simulation for NCYCLES    
+  bool making_crankshaft_move;
+
   for (int i=0; i<NCYCLES; i++) {
     for (int j=0; j<NUM_AMINO_ACIDS; j++) {   
+      // decide moves
+      mc_move(j);
+      // accept move
+      mc_accept(j, making_crankshaft_move);
       
-      double tmp_new_energy = (energy_of_individual_amino_acid(j) / 2.0);
-      new_U = current_U - amino_acid_energies[j]  + tmp_new_energy;
-      if (accepted(new_U)) {
-	amino_acid_energies[j] = tmp_new_energy;
-	current_U = new_U;
-      }
-      else {
-	set_amino_acid_coords(j, current_coords_being_displaced[0][0], 
-			      current_coords_being_displaced[0][1], 
-			      current_coords_being_displaced[0][2]);
-      }
-      
-      average_U += current_U;
+      // update temperature and such
+      update_observables();      
+
 
       // for debugging purposes; can comment it out later to optimize runtime
       clear_old_data();
       
     }
   }
+  */
+  int count = 0;
+  for (int j=0; j<NUM_AMINO_ACIDS; j++) {
+    //count += end_moves_possible(j);
+    count = crankshafts_possible(j);
+    cout << "bead #" << j << " = ("
+	 << amino_acids[j][0] << ", "
+	 << amino_acids[j][1] << ", "
+	 << amino_acids[j][2] << ") - " 
+	 << count << " crankshafts possible" << endl;
+    if (count > 0)
+      for (int k=0; k<count; k++) {
+	cout << "("
+	     << available_next_coords[2*k][0] << ", "
+	     << available_next_coords[2*k][1] << ", "
+	     << available_next_coords[2*k][2] << "), (" 
+	     << available_next_coords[(2*k)+1][0] << ", "
+	     << available_next_coords[(2*k)+1][1] << ", "
+	     << available_next_coords[(2*k)+1][2] << ")\n";
+      }
+    cout<<endl;
+    clear_old_data();
+  }
+  //  cout << count << endl;
+  
   return 0;
 }
 
+
+int grab_input_data(int argc, char **argv) {
+  std::ifstream file;
+  
+  // attempt to open file
+  if (argc < 3) {
+    std::cout << "Program must be invoked with argument of form \"temperature\" \"input_file\"\n" << std::endl;
+    return -1;
+  }
+
+  // set temperature and open input file
+  T = strtod(argv[1], NULL);
+  file.open(argv[2]);  
+      
+  if(!file.good()) {
+    std::cout << "Failed to open \"" << argv[2] << "\" for input." << std::endl;
+    return -1;
+  }
+  
+  char line[BUF_SIZE],  *cToken;
+  int tmp_x, tmp_y, tmp_z, i = 0;
+  
+  // To make the programming less complex, the file format will be as follows:
+  // "3D coordinates"
+  // The length of the protein chain, ncycles, and the bead type will be 
+  // hard-coded into the program
+  
+  while ( file.good() ) {
+    if (i == NUM_AMINO_ACIDS)
+      break;
+    file.getline(line, BUF_SIZE);  
+    cToken = strtok( line, " \r\n" );
+
+    if( cToken != NULL) {
+      tmp_x = atoi(cToken);
+      cToken = strtok( NULL, " \r\n" );
+      tmp_y = atoi(cToken);
+      cToken = strtok( NULL, " \r\n" );
+      tmp_z = atoi(cToken);
+
+      amino_acids[i][0] = tmp_x;
+      amino_acids[i][1] = tmp_y;
+      amino_acids[i][2] = tmp_z;
+      i++;
+    }
+  }
+  
+  return 0;
+}
 
 
 // initialize energies, coordinate vector, U (the energy of the system), and U_2 (U^2)
@@ -78,6 +156,53 @@ void initialize_energies() {
   current_U = average_U;
   average_U_2 = pow(average_U, 2);
 
+  return;
+}
+
+bool mc_move(int index) {
+  bool making_crankshaft_move;
+  
+  // for end amino acid cases
+  if (index == 0 || index == NUM_AMINO_ACIDS-1)
+    make_end_move(index, end_moves_possible(index));
+  return making_crankshaft_move;
+}
+
+void mc_accept(int index, bool making_crankshaft_move) {
+
+  // calculate energy difference
+  double tmp_new_energy_2, tmp_new_energy = (energy_of_individual_amino_acid(index) / 2.0);
+  new_U = current_U - amino_acid_energies[index] + tmp_new_energy;
+  if (making_crankshaft_move) {
+    tmp_new_energy_2 = (energy_of_individual_amino_acid(index+1) / 2.0);
+    new_U = new_U - amino_acid_energies[index+1] + tmp_new_energy_2;
+  }
+  
+  // if move is accepted, then update the individual and total energies
+  if (accepted(new_U)) {
+    amino_acid_energies[index] = tmp_new_energy;
+    if (making_crankshaft_move)
+      amino_acid_energies[index+1] = tmp_new_energy_2;
+    current_U = new_U;
+  }
+
+  // otherwise, reset amino coords to the old ones
+  else {
+    set_amino_acid_coords(index, current_coords_being_displaced[0][0], 
+			  current_coords_being_displaced[0][1], 
+			  current_coords_being_displaced[0][2]);
+    if (making_crankshaft_move)
+      set_amino_acid_coords(index+1, current_coords_being_displaced[1][0], 
+			    current_coords_being_displaced[1][1], 
+			    current_coords_being_displaced[1][2]);
+	
+  }
+  return;
+}
+
+void update_observables() {
+  average_U += current_U;
+  average_U_2 += pow(current_U, 2);
   return;
 }
 
@@ -159,9 +284,15 @@ bool accepted(double new_U) {
 // returns a true if a corner flip is possible, and 
 // if true, places the other corner's coords into available_next_coords' row 0
 bool corner_flip_possible(int index) {
+  
+  // account for end molecules
+  if (index == 0 || index == NUM_AMINO_ACIDS-1)
+    return 0;
+  
   // find the opposite corner's coordinates
   if (amino_acids[index][0] == amino_acids[index+1][0] && 
       amino_acids[index][0] == amino_acids[index-1][0]) {
+    available_next_coords[0][0] = amino_acids[index][0];
     if (amino_acids[index][1] == amino_acids[index-1][1]) {
       available_next_coords[0][1] = amino_acids[index+1][1];
       available_next_coords[0][2] = amino_acids[index-1][2];
@@ -173,7 +304,8 @@ bool corner_flip_possible(int index) {
   }
 
   else if (amino_acids[index][1] == amino_acids[index+1][1] && 
-	   amino_acids[index][1] == amino_acids[index-1][1]) {    
+	   amino_acids[index][1] == amino_acids[index-1][1]) {
+    available_next_coords[0][1] = amino_acids[index][1];
     if (amino_acids[index][0] == amino_acids[index-1][0]) {
       available_next_coords[0][0] = amino_acids[index+1][0];
       available_next_coords[0][2] = amino_acids[index-1][2];
@@ -184,7 +316,8 @@ bool corner_flip_possible(int index) {
     }
   }
 
-  else {    
+  else {
+    available_next_coords[0][2] = amino_acids[index][2];
     if (amino_acids[index][0] == amino_acids[index-1][0]) {
       available_next_coords[0][0] = amino_acids[index+1][0];
       available_next_coords[0][1] = amino_acids[index-1][1];
@@ -213,13 +346,16 @@ int crankshafts_possible(int index) {
      (index-2)______(index-1)           (index+2)______(index+3)
   */
   
-  // The crankshaft cannot be performed on the first two or last two amino acids
+  // The crankshaft cannot be performed on the first or last two amino acids
   if (index < 2 || index > NUM_AMINO_ACIDS-3)
     return 0;
   
-  int num_crankshafts_possible = 0;
-  crankshafts_possible_subproc(index);
-  for (int i=0; i<4; i++) {
+  int num_trial_crankshafts_possible = crankshafts_possible_subproc(index);
+  int num_valid_crankshafts_possible = 0;
+
+  // try each of the four available pairs of crankshaft positions (including old one)
+  // if both coords empty, then add them to available_next_coords
+  for (int i=0; i<num_trial_crankshafts_possible; i++) {
     if (find_amino_acid_in_this_coordinate(crankshaft_possible_pairs[2*i][0], 
 					   crankshaft_possible_pairs[2*i][1], 
 					   crankshaft_possible_pairs[2*i][2]) < 0 &&
@@ -227,44 +363,54 @@ int crankshafts_possible(int index) {
 					   crankshaft_possible_pairs[(2*i)+1][1], 
 					   crankshaft_possible_pairs[(2*i)+1][2]) < 0) {
       // copy coords (index)
-      available_next_coords[2*num_crankshafts_possible][0] = crankshaft_possible_pairs[2*i][0];
-      available_next_coords[2*num_crankshafts_possible][1] = crankshaft_possible_pairs[2*i][1];
-      available_next_coords[2*num_crankshafts_possible][2] = crankshaft_possible_pairs[2*i][2];
-
-      // copy coords (index+1)
-      available_next_coords[(2*num_crankshafts_possible)+1][0] = crankshaft_possible_pairs[(2*i)+1][0];
-      available_next_coords[(2*num_crankshafts_possible)+1][1] = crankshaft_possible_pairs[(2*i)+1][1];
-      available_next_coords[(2*num_crankshafts_possible)+1][2] = crankshaft_possible_pairs[(2*i)+1][2];
+      available_next_coords[2*num_valid_crankshafts_possible][0] = crankshaft_possible_pairs[2*i][0];
+      available_next_coords[2*num_valid_crankshafts_possible][1] = crankshaft_possible_pairs[2*i][1];
+      available_next_coords[2*num_valid_crankshafts_possible][2] = crankshaft_possible_pairs[2*i][2];
       
-      // increment number of possible crankshafts
-      num_crankshafts_possible++;
+      // copy coords (index+1)
+      available_next_coords[(2*num_valid_crankshafts_possible)+1][0] = crankshaft_possible_pairs[(2*i)+1][0];
+      available_next_coords[(2*num_valid_crankshafts_possible)+1][1] = crankshaft_possible_pairs[(2*i)+1][1];
+      available_next_coords[(2*num_valid_crankshafts_possible)+1][2] = crankshaft_possible_pairs[(2*i)+1][2];   
+      
+      // increment valid pairs
+      num_valid_crankshafts_possible++;
     }
   }
-  return num_crankshafts_possible;
+  return num_valid_crankshafts_possible;
 }
 
-// this subproc finds out the common axis coords that (index-2), (index-1), (index+2), (index+3) have
-// this subproc is to make crankshafts_possible look simpler
-// if they have same X and Y, the code returned is 4
-// if X and Z, code returned is 6
-// if Y and Z, code returned is 8
-void crankshafts_possible_subproc(int index) {
-  int code = 0;
-  if (amino_acids[index-2][0] == amino_acids[index-1][0] &&
-      amino_acids[index-1][0]  == amino_acids[index+2][0] &&
-      amino_acids[index+2][0] == amino_acids[index+3][0])
+/* 
+   This subproc finds out the common axis coords that (index-2), (index-1), (index+2), (index+3) have
+   this subproc is to make crankshafts_possible look simpler
+   THE ALGORITHM: if (index-1) and (index+2) are on the same Z coordinate (BUT (index) and (index+1)
+   are not on that same Z coordinate), we try out combinations of 
+   their neighbor coords for (index) and (index+1) as possible pairs for new crankshaft positions
+   Repeat for X and Y axes
+   ALTHOUGH COMPLEX, THIS CODE HAS BEEN TESTED 
+*/
+int crankshafts_possible_subproc(int index) {
+  int code = 0, num_trial_crankshafts_possible = 0;
+  if (amino_acids[index-1][0]  == amino_acids[index+2][0])
     code++;
-  if (amino_acids[index-2][1] == amino_acids[index-1][1] &&
-      amino_acids[index-1][1]  == amino_acids[index+2][1] &&
-      amino_acids[index+2][1] == amino_acids[index+3][1])
+  if (amino_acids[index-1][1]  == amino_acids[index+2][1])
     code += 3;
-  if (amino_acids[index-2][2] == amino_acids[index-1][2] &&
-      amino_acids[index-1][2]  == amino_acids[index+2][2] &&
-      amino_acids[index+2][2] == amino_acids[index+3][2])
+  if (amino_acids[index-1][2]  == amino_acids[index+2][2])
     code += 5;
+
+  // make sure the proposed "crank" is not linear
+  if (code == 4 && amino_acids[index-1][0]  == amino_acids[index][0] &&
+      amino_acids[index-1][1]  == amino_acids[index][1])
+    return 0;
+  if (code == 6 && amino_acids[index-1][0]  == amino_acids[index][0] &&
+      amino_acids[index-1][2]  == amino_acids[index][2])
+    return 0;
+  if (code == 8 && amino_acids[index-1][1]  == amino_acids[index][1] &&
+      amino_acids[index-1][2]  == amino_acids[index][2])
+    return 0;
 
   int i = 0;
   if (code == 4 || code == 6) {
+    num_trial_crankshafts_possible += 2;
     crankshaft_possible_pairs[i][0] = amino_acids[index-1][0]+1;
     crankshaft_possible_pairs[i][1] = amino_acids[index-1][1];
     crankshaft_possible_pairs[i++][2] = amino_acids[index-1][2];
@@ -282,6 +428,7 @@ void crankshafts_possible_subproc(int index) {
     crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2];
   }
   if (code == 4 || code == 8) {
+    num_trial_crankshafts_possible += 2;
     crankshaft_possible_pairs[i][0] = amino_acids[index-1][0];
     crankshaft_possible_pairs[i][1] = amino_acids[index-1][1]+1;
     crankshaft_possible_pairs[i++][2] = amino_acids[index-1][2];
@@ -299,6 +446,7 @@ void crankshafts_possible_subproc(int index) {
     crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2];
   }
   if (code == 6 || code == 8) {
+    num_trial_crankshafts_possible += 2;
     crankshaft_possible_pairs[i][0] = amino_acids[index-1][0];
     crankshaft_possible_pairs[i][1] = amino_acids[index-1][1];
     crankshaft_possible_pairs[i++][2] = amino_acids[index-1][2]+1;
@@ -315,7 +463,18 @@ void crankshafts_possible_subproc(int index) {
     crankshaft_possible_pairs[i][1] = amino_acids[index+2][1];
     crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2]-1;
   }
-  return;
+  /*
+  cout<<"possibles - "<< endl;
+  for (int i=0; i<4; i++)
+    cout << "(" << crankshaft_possible_pairs[2*i][0] << ", "
+	 << crankshaft_possible_pairs[2*i][1] << ", "
+	 << crankshaft_possible_pairs[2*i][2] << "), " 
+	 << "(" << crankshaft_possible_pairs[(2*i)+1][0] << ", "
+	 << crankshaft_possible_pairs[(2*i)+1][1] << ", "
+	 << crankshaft_possible_pairs[(2*i)+1][2] << ")" << endl;
+  cout<<endl;
+  */
+  return num_trial_crankshafts_possible;
 }
 
 // returns the number of coords possible for end amino acid to move to and 
@@ -323,11 +482,18 @@ void crankshafts_possible_subproc(int index) {
 int end_moves_possible(int index) {
   int num_end_moves_possible = 0;
 
+  // in case function is called on a non-end protein, returns 0
+  if (index != 0 && index != NUM_AMINO_ACIDS-1)
+    return 0;
+
   // get neighbors
-  store_neighbors(index);
+  if (index == 0)
+    store_neighbors(1);
+  else
+    store_neighbors(NUM_AMINO_ACIDS-2);
 
   for (int j=0; j<6; j++) {
-    // if there is no amino acid present in this coordinate, then store it as available
+    // if there is no amino acid present in this coordinate, then coord into available_next_coords
     if (find_amino_acid_in_this_coordinate(neighbors[j][0], neighbors[j][1], neighbors[j][2]) < 0) {
       available_next_coords[num_end_moves_possible][0] = neighbors[j][0];
       available_next_coords[num_end_moves_possible][1] = neighbors[j][1];
@@ -339,14 +505,18 @@ int end_moves_possible(int index) {
   return num_end_moves_possible;
 }
 
-// flip corner and save old coords into current_coords_being_displaced
+// save old coords into current_coords_being_displaced, then flip corner
 void flip_corner(int index) {
+  current_coords_being_displaced[0][0] = amino_acids[index][0];
+  current_coords_being_displaced[0][1] = amino_acids[index][1];
+  current_coords_being_displaced[0][2] = amino_acids[index][2];
+
   set_amino_acid_coords(index, available_next_coords[0][0], 
 			available_next_coords[0][1], available_next_coords[0][2]);
   return;
 }
 
-// choose a crankshaft, perform crankshaft, and save old coords into current_coords_being_displaced
+// choose a crankshaft, save old coords into current_coords_being_displaced, then perform crankshaft
 void crankshaft(int index, int num_choices) {
   int choice = (int)(ran3(MY_SEED) * num_choices);
 
@@ -362,7 +532,7 @@ void crankshaft(int index, int num_choices) {
   return;
 }
 
-// make end move and save old coords into current_coords_being_displaced
+// save old coords into current_coords_being_displaced, then make end move
 void make_end_move(int index, int num_choices) {
   int choice = (int)(ran3(MY_SEED) * num_choices);
   
