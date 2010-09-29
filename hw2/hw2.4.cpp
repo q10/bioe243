@@ -334,7 +334,8 @@ bool corner_flip_possible(int index) {
 					    available_next_coords[0][2]) < 0;
 }
 
-// returns the number of crankshafts possible with amino acid index and index+1, and 
+// returns the number of crankshafts possible with amino acid index and index+1 
+// (just the ones that are both open and possible to rotate to), and 
 // places the new coords in pairs into available_next_coords' row 0-5
 int crankshafts_possible(int index) {
 
@@ -350,8 +351,8 @@ int crankshafts_possible(int index) {
   if (index < 2 || index > NUM_AMINO_ACIDS-3)
     return 0;
   
-  int num_trial_crankshafts_possible = crankshafts_possible_subproc(index);
-  int num_valid_crankshafts_possible = 0;
+  int num_trial_crankshafts_possible = crankshafts_possible_subproc(index), num_valid_crankshafts_possible = 0;
+  bool same_x, same_y, same_z, okay_to_copy;
 
   // try each of the four available pairs of crankshaft positions (including old one)
   // if both coords empty, then add them to available_next_coords
@@ -362,18 +363,78 @@ int crankshafts_possible(int index) {
 	find_amino_acid_in_this_coordinate(crankshaft_possible_pairs[(2*i)+1][0], 
 					   crankshaft_possible_pairs[(2*i)+1][1], 
 					   crankshaft_possible_pairs[(2*i)+1][2]) < 0) {
-      // copy coords (index)
-      available_next_coords[2*num_valid_crankshafts_possible][0] = crankshaft_possible_pairs[2*i][0];
-      available_next_coords[2*num_valid_crankshafts_possible][1] = crankshaft_possible_pairs[2*i][1];
-      available_next_coords[2*num_valid_crankshafts_possible][2] = crankshaft_possible_pairs[2*i][2];
+
+      // even though the position is possible, the *rotation* into that position may not be
+      // so this monstrous if statement checks for that
+      same_x = false, same_y = false, same_z = false, okay_to_copy = false;
+      if (crankshaft_possible_pairs[2*i][0] == amino_acids[index][0])
+	same_x = true;
+      if (crankshaft_possible_pairs[2*i][1] == amino_acids[index][1])
+	same_y = true;
+      if (crankshaft_possible_pairs[2*i][2] == amino_acids[index][2])
+	same_z = true;
+
+      if ((same_x && same_y) || (same_y && same_z) || (same_z && same_x)) {
+	if (same_x)
+	  okay_to_copy = okay_to_copy || (find_amino_acid_in_this_coordinate(amino_acids[index-1][0]+1, 
+									     amino_acids[index-1][1], 
+									     amino_acids[index-1][2]) < 0 &&
+					  find_amino_acid_in_this_coordinate(amino_acids[index+2][0]+1, 
+									     amino_acids[index+2][1], 
+									     amino_acids[index+2][2]) < 0) || 
+	    (find_amino_acid_in_this_coordinate(amino_acids[index-1][0]-1, 
+						amino_acids[index-1][1], 
+						amino_acids[index-1][2]) < 0 &&
+	     find_amino_acid_in_this_coordinate(amino_acids[index+2][0]-1, 
+						amino_acids[index+2][1], 
+						amino_acids[index+2][2]) < 0);
+	if (same_y)
+	  okay_to_copy = okay_to_copy || (find_amino_acid_in_this_coordinate(amino_acids[index-1][0], 
+									     amino_acids[index-1][1]+1, 
+									     amino_acids[index-1][2]) < 0 &&
+					  find_amino_acid_in_this_coordinate(amino_acids[index+2][0], 
+									     amino_acids[index+2][1]+1, 
+									     amino_acids[index+2][2]) < 0) || 
+	    (find_amino_acid_in_this_coordinate(amino_acids[index-1][0], 
+						amino_acids[index-1][1]-1, 
+						amino_acids[index-1][2]) < 0 &&
+	     find_amino_acid_in_this_coordinate(amino_acids[index+2][0], 
+						amino_acids[index+2][1]-1, 
+						amino_acids[index+2][2]) < 0);
+	if (same_z)
+	  okay_to_copy = okay_to_copy || (find_amino_acid_in_this_coordinate(amino_acids[index-1][0], 
+									     amino_acids[index-1][1], 
+									     amino_acids[index-1][2]+1) < 0 &&
+					  find_amino_acid_in_this_coordinate(amino_acids[index+2][0], 
+									     amino_acids[index+2][1], 
+									     amino_acids[index+2][2]+1) < 0) || 
+	    (find_amino_acid_in_this_coordinate(amino_acids[index-1][0], 
+						amino_acids[index-1][1], 
+						amino_acids[index-1][2]-1) < 0 &&
+	     find_amino_acid_in_this_coordinate(amino_acids[index+2][0], 
+						amino_acids[index+2][1], 
+						amino_acids[index+2][2]-1) < 0);
+      }
+
+      // if the crank position is not opposite, then turn is of course possible
+      else
+	okay_to_copy = true;
+
+      // now we finally copy coords
+      if (okay_to_copy) {
+	// copy coords (index)
+	available_next_coords[2*num_valid_crankshafts_possible][0] = crankshaft_possible_pairs[2*i][0];
+	available_next_coords[2*num_valid_crankshafts_possible][1] = crankshaft_possible_pairs[2*i][1];
+	available_next_coords[2*num_valid_crankshafts_possible][2] = crankshaft_possible_pairs[2*i][2];
       
-      // copy coords (index+1)
-      available_next_coords[(2*num_valid_crankshafts_possible)+1][0] = crankshaft_possible_pairs[(2*i)+1][0];
-      available_next_coords[(2*num_valid_crankshafts_possible)+1][1] = crankshaft_possible_pairs[(2*i)+1][1];
-      available_next_coords[(2*num_valid_crankshafts_possible)+1][2] = crankshaft_possible_pairs[(2*i)+1][2];   
+	// copy coords (index+1)
+	available_next_coords[(2*num_valid_crankshafts_possible)+1][0] = crankshaft_possible_pairs[(2*i)+1][0];
+	available_next_coords[(2*num_valid_crankshafts_possible)+1][1] = crankshaft_possible_pairs[(2*i)+1][1];
+	available_next_coords[(2*num_valid_crankshafts_possible)+1][2] = crankshaft_possible_pairs[(2*i)+1][2];   
       
-      // increment valid pairs
-      num_valid_crankshafts_possible++;
+	// increment valid pairs
+	num_valid_crankshafts_possible++;
+      }
     }
   }
   return num_valid_crankshafts_possible;
@@ -463,7 +524,7 @@ int crankshafts_possible_subproc(int index) {
     crankshaft_possible_pairs[i][1] = amino_acids[index+2][1];
     crankshaft_possible_pairs[i++][2] = amino_acids[index+2][2]-1;
   }
-  /*
+  /* for debugging purposes
   cout<<"possibles - "<< endl;
   for (int i=0; i<4; i++)
     cout << "(" << crankshaft_possible_pairs[2*i][0] << ", "
