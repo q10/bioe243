@@ -5,6 +5,7 @@
 #define BUF_SIZE 256
 
 // declare functions for use
+void print_possible_moves();
 int grab_input_data(int argc, char **argv);
 void initialize_energies();
 bool mc_move(int index);
@@ -33,11 +34,11 @@ double current_U, new_U, average_U, average_U_2, T, amino_acid_energies[NUM_AMIN
 
 // these variables used for storing next available coordinates for moving into, 
 // and for storing the old coordinates in case move is rejected
-// available_next_coords has 6 rows for 3 possible crankshafts
+// available_next_coords has 5 rows for 5 possible end moves
+// available_next_crankshaft_coords has 6 rows for 3 possible crankshafts
 // current_coords_being_displaced has 2 possible amino acids moved max per MC move (crankshaft)
 // neighbors store coordinates for the 6 neighbors
-int current_coords_being_displaced[2][3], available_next_coords[6][3], 
-  crankshaft_possible_pairs[8][3], neighbors[6][3];
+int current_coords_being_displaced[2][3], available_next_coords[5][3], available_next_crankshaft_coords[6][3], crankshaft_possible_pairs[8][3], neighbors[6][3];
 
 int main( int argc, char **argv ) {
 
@@ -46,6 +47,7 @@ int main( int argc, char **argv ) {
     return -1;
   
   initialize_energies();
+  print_possible_moves();
   /*
   // run simulation for NCYCLES    
   bool making_crankshaft_move;
@@ -67,33 +69,58 @@ int main( int argc, char **argv ) {
     }
   }
   */
-  int count = 0;
-  for (int j=0; j<NUM_AMINO_ACIDS; j++) {
-    //count += end_moves_possible(j);
-    count = crankshafts_possible(j);
-    cout << "bead #" << j << " = ("
-	 << amino_acids[j][0] << ", "
-	 << amino_acids[j][1] << ", "
-	 << amino_acids[j][2] << ") - " 
-	 << count << " crankshafts possible" << endl;
-    if (count > 0)
-      for (int k=0; k<count; k++) {
-	cout << "("
-	     << available_next_coords[2*k][0] << ", "
-	     << available_next_coords[2*k][1] << ", "
-	     << available_next_coords[2*k][2] << "), (" 
-	     << available_next_coords[(2*k)+1][0] << ", "
-	     << available_next_coords[(2*k)+1][1] << ", "
-	     << available_next_coords[(2*k)+1][2] << ")\n";
-      }
-    cout<<endl;
-    clear_old_data();
-  }
-  //  cout << count << endl;
-  
+
   return 0;
 }
 
+
+
+void print_possible_moves() {
+  int count = 0;
+  for (int j=0; j<NUM_AMINO_ACIDS; j++) {
+    count = end_moves_possible(j);
+    if (count > 0) {
+      cout << "For bead #" << j+1 << " end move to ";
+      for (int k=0; k<count; k++) {
+	cout<< available_next_coords[k][0] << " "
+	    << available_next_coords[k][1] << " "
+	    << available_next_coords[k][2];
+	if (k==count-1)
+	  cout << endl;
+	else
+	  cout << ", ";
+      }
+    }
+
+    bool test = corner_flip_possible(j);
+    if (test) {
+      cout << "For bead #" << j+1 << " corner flip to "
+	   << available_next_coords[0][0] << " "
+	   << available_next_coords[0][1] << " "
+	   << available_next_coords[0][2] << endl;
+      
+    }
+      
+    count = crankshafts_possible(j);
+    if (count > 0) {
+      cout << "For bead #" << j+1 << " and " << j+2 << " : crankshaft move to: ";
+      for (int k=0; k<count; k++) {
+	cout << "("
+	     << available_next_coords[2*k][0] << " "
+	     << available_next_coords[2*k][1] << " "
+	     << available_next_coords[2*k][2] << " and " 
+	     << available_next_coords[(2*k)+1][0] << " "
+	     << available_next_coords[(2*k)+1][1] << " "
+	     << available_next_coords[(2*k)+1][2] << ")";
+	if (k == count-1)
+	  cout << endl;
+	else
+	  cout << " or ";
+      }
+    }
+  }
+  return;
+}
 
 int grab_input_data(int argc, char **argv) {
   std::ifstream file;
@@ -159,15 +186,21 @@ void initialize_energies() {
   return;
 }
 
+// makes mc move and returns true if a crankshaft move is made, b/c crankshafts are special cases
 bool mc_move(int index) {
   bool making_crankshaft_move;
   
   // for end amino acid cases
   if (index == 0 || index == NUM_AMINO_ACIDS-1)
     make_end_move(index, end_moves_possible(index));
+
+  else {
+    
+  }
   return making_crankshaft_move;
 }
 
+// accept move
 void mc_accept(int index, bool making_crankshaft_move) {
 
   // calculate energy difference
@@ -619,7 +652,11 @@ void clear_old_data() {
       neighbors[i][j] = 0;
     }
   }
-
+  /*
+  for (int i=0; i<5; i++)
+    for (int j=0; j<3; j++)
+      available_next_crankshaft_coords[i][j] = 0;
+  */
   for (int i=0; i<8; i++)
     for (int j=0; j<8; j++)
     crankshaft_possible_pairs[i][j] = 0;
