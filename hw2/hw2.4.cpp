@@ -282,7 +282,7 @@ double energy_of_individual_amino_acid(int i, int table_type) {
   // for each of the neigbor positions, find the index of amino acid that 
   // lives in it, if any, and add inter-amino-acid energy to total energy
   for (int j=0; j<6; j++) {
-    index = find_amino_acid_in_this_coordinate(neighbors[j][0], neighbors[j][1], neighbors[j][2]);    
+    index = find_amino_acid_in_this_coordinate(neighbors[j][0], neighbors[j][1], neighbors[j][2]);
     energy += energy_table_lookup_value(j, index, table_type);
   }
   
