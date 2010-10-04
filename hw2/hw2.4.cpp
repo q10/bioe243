@@ -7,15 +7,17 @@
 // declare functions for use
 void print_possible_moves();
 int grab_input_data(int argc, char **argv);
-void initialize_energies();
+void initialize_energies(int table_type);
 bool mc_move(int index);
-void mc_accept(int index, bool making_crankshaft_move);
+void mc_accept(int index, int table_type, int temperature, bool making_crankshaft_move);
 void update_observables();
-double energy_of_individual_amino_acid(int i);
+void calculate_and_print_values(int table_type, int temperature);
+double energy_of_individual_amino_acid(int i, int table_type);
+double energy_table_lookup_value(int i, int index, int table_type);
 void store_neighbors(int i);
 int find_amino_acid_in_this_coordinate(int x, int y, int z);
 void set_amino_acid_coords(int index, int new_x, int new_y, int new_z);
-bool accepted(double new_U);
+bool accepted(double new_U, int temperature);
 bool corner_flip_possible(int index);
 int crankshafts_possible(int index);
 int crankshafts_possible_subproc(int index);
@@ -29,8 +31,10 @@ void clear_old_data();
 // (no need to pass-by-value or worry about pointer syntax)
 const int NUM_AMINO_ACIDS = 36;
 char AMINO_ACID_TYPE[NUM_AMINO_ACIDS+1] = "HHPHHPPHPPPHPPHPHHHHPPPPHHPPHPHHHHPP";
-int NCYCLES, amino_acids[NUM_AMINO_ACIDS][3]; // 4th param of amino acids array is individual particle energy
-double current_U, new_U, average_U, average_U_2, T, amino_acid_energies[NUM_AMINO_ACIDS];
+int NCYCLES=10000000, amino_acids[NUM_AMINO_ACIDS][3]; // 4th param of amino acids array is individual particle energy
+int AMINO_ACIDS_TEMPLATE[NUM_AMINO_ACIDS][3]; // the original particle positions; for start of each simulation
+double current_U, new_U, average_U, average_U_2, amino_acid_energies[NUM_AMINO_ACIDS];
+double T[] = {0.6, 0.8, 0.85, 1.0, 1.2, 1.4, 1.6};
 
 // these variables used for storing next available coordinates for moving into, 
 // and for storing the old coordinates in case move is rejected
@@ -46,34 +50,50 @@ int main( int argc, char **argv ) {
   if (grab_input_data(argc, argv) < 0)
     return -1;
   
-  initialize_energies();
-  print_possible_moves();
-  /*
-  // run simulation for NCYCLES    
-  bool making_crankshaft_move;
+  for (int table_type=0; table_type<1; table_type++) {
+    for (int temperature=0; temperature<7; temperature++) {
 
-  for (int i=0; i<NCYCLES; i++) {
-    for (int j=0; j<NUM_AMINO_ACIDS; j++) {   
-      // decide moves
-      mc_move(j);
-      // accept move
-      mc_accept(j, making_crankshaft_move);
+      initialize_energies(table_type);
+      // print_possible_moves();
+  
+      // run simulation for NCYCLES
+      bool making_crankshaft_move;
+
+      for (int i=0; i<NCYCLES; i++) {
+	for (int j=0; j<NUM_AMINO_ACIDS; j++) {   
+	  // decide moves
+	  making_crankshaft_move = mc_move(j);
+
+	  // accept move
+	  mc_accept(j, table_type, temperature, making_crankshaft_move);
       
-      // update temperature and such
-      update_observables();      
+	  // update temperature and such
+	  update_observables();
 
-
-      // for debugging purposes; can comment it out later to optimize runtime
-      clear_old_data();
-      
+	  // for debugging purposes; can comment it out later to optimize runtime
+	  // clear_old_data();
+	}
+      }
+  
+      calculate_and_print_values(table_type, temperature);
     }
-  }
-  */
-
+  }  
+  
   return 0;
 }
 
-
+void calculate_and_print_values(int table_type, int temperature) {
+  average_U /= (double)(NCYCLES * NUM_AMINO_ACIDS); 
+  average_U_2 /= (double)(NCYCLES * NUM_AMINO_ACIDS);
+  double C_T = (average_U_2 - pow(average_U, 2)) / T[temperature];
+  string str = (table_type < 1) ? "Solvent-less Model;  " : "Solvent Model;  ";
+  cout << "Energy Model = " << str
+       << "Temperature = " << T[temperature] 
+       << ";  <U^2> = " << average_U_2 
+       << ";  <U> = " << average_U
+       << ";  C(T) = " << C_T << endl;
+  return;
+}
 
 void print_possible_moves() {
   int count = 0;
@@ -126,17 +146,16 @@ int grab_input_data(int argc, char **argv) {
   std::ifstream file;
   
   // attempt to open file
-  if (argc < 3) {
-    std::cout << "Program must be invoked with argument of form \"temperature\" \"input_file\"\n" << std::endl;
+  if (argc < 2) {
+    std::cout << "Program must be invoked with argument of form \"input_file\"\n" << std::endl;
     return -1;
   }
 
-  // set temperature and open input file
-  T = strtod(argv[1], NULL);
-  file.open(argv[2]);  
+  // open input file
+  file.open(argv[1]);  
       
   if(!file.good()) {
-    std::cout << "Failed to open \"" << argv[2] << "\" for input." << std::endl;
+    std::cout << "Failed to open \"" << argv[1] << "\" for input." << std::endl;
     return -1;
   }
   
@@ -161,9 +180,9 @@ int grab_input_data(int argc, char **argv) {
       cToken = strtok( NULL, " \r\n" );
       tmp_z = atoi(cToken);
 
-      amino_acids[i][0] = tmp_x;
-      amino_acids[i][1] = tmp_y;
-      amino_acids[i][2] = tmp_z;
+      AMINO_ACIDS_TEMPLATE[i][0] = tmp_x;
+      AMINO_ACIDS_TEMPLATE[i][1] = tmp_y;
+      AMINO_ACIDS_TEMPLATE[i][2] = tmp_z;
       i++;
     }
   }
@@ -173,12 +192,18 @@ int grab_input_data(int argc, char **argv) {
 
 
 // initialize energies, coordinate vector, U (the energy of the system), and U_2 (U^2)
-void initialize_energies() {
+void initialize_energies(int table_type) {
   current_U = 0.0, average_U = 0.0, average_U_2  = 0.0;
+
+  for (int i=0; i<NUM_AMINO_ACIDS; i++)
+    for(int j=0; j<3; j++)
+      amino_acids[i][j] = AMINO_ACIDS_TEMPLATE[i][j];
+
   for (int i=0; i<NUM_AMINO_ACIDS; i++) {    
-    amino_acid_energies[i] = energy_of_individual_amino_acid(i);
+    amino_acid_energies[i] = energy_of_individual_amino_acid(i, table_type);
     average_U += amino_acid_energies[i];
   }
+
   average_U /= 2.0; // account for double-counting the energy
   current_U = average_U;
   average_U_2 = pow(average_U, 2);
@@ -188,31 +213,40 @@ void initialize_energies() {
 
 // makes mc move and returns true if a crankshaft move is made, b/c crankshafts are special cases
 bool mc_move(int index) {
-  bool making_crankshaft_move;
+  bool making_crankshaft_move = false;
   
   // for end amino acid cases
   if (index == 0 || index == NUM_AMINO_ACIDS-1)
     make_end_move(index, end_moves_possible(index));
 
-  else {
-    
+  // choose to flip corner
+  else if (ran3(MY_SEED)*2 < 1.0) {
+    if (corner_flip_possible(index))
+      flip_corner(index);
   }
+  
+  // else attempt to make crankshaft
+  else {
+    crankshaft(index, crankshafts_possible(index));
+    making_crankshaft_move = true;
+  }
+  
   return making_crankshaft_move;
 }
 
 // accept move
-void mc_accept(int index, bool making_crankshaft_move) {
+void mc_accept(int index, int table_type, int temperature, bool making_crankshaft_move) {
 
   // calculate energy difference
-  double tmp_new_energy_2, tmp_new_energy = (energy_of_individual_amino_acid(index) / 2.0);
+  double tmp_new_energy_2, tmp_new_energy = (energy_of_individual_amino_acid(index, table_type) / 2.0);
   new_U = current_U - amino_acid_energies[index] + tmp_new_energy;
   if (making_crankshaft_move) {
-    tmp_new_energy_2 = (energy_of_individual_amino_acid(index+1) / 2.0);
+    tmp_new_energy_2 = (energy_of_individual_amino_acid(index+1, table_type) / 2.0);
     new_U = new_U - amino_acid_energies[index+1] + tmp_new_energy_2;
   }
   
   // if move is accepted, then update the individual and total energies
-  if (accepted(new_U)) {
+  if (accepted(new_U, temperature)) {
     amino_acid_energies[index] = tmp_new_energy;
     if (making_crankshaft_move)
       amino_acid_energies[index+1] = tmp_new_energy_2;
@@ -239,7 +273,7 @@ void update_observables() {
   return;
 }
 
-double energy_of_individual_amino_acid(int i) {
+double energy_of_individual_amino_acid(int i, int table_type) {
   double energy = 0.0;
   int index;
   // stores coordinates of immediate neighbors in array
@@ -248,8 +282,26 @@ double energy_of_individual_amino_acid(int i) {
   // for each of the neigbor positions, find the index of amino acid that 
   // lives in it, if any, and add inter-amino-acid energy to total energy
   for (int j=0; j<6; j++) {
-    index = find_amino_acid_in_this_coordinate(neighbors[j][0], neighbors[j][1], neighbors[j][2]);
-    
+    index = find_amino_acid_in_this_coordinate(neighbors[j][0], neighbors[j][1], neighbors[j][2]);    
+    energy += energy_table_lookup_value(j, index, table_type);
+  }
+  
+  return energy;
+}
+
+double energy_table_lookup_value(int i, int index, int table_type) {
+  double energy = 0.0;
+
+  // if using energy model 0 (w/o solvent) and index is legit
+  if (table_type == 0 && index >= 0) {
+    if (AMINO_ACID_TYPE[i] == 'H')
+      energy += (AMINO_ACID_TYPE[index] == 'H') ? -1.0 : 0.0;
+    else
+      energy += (AMINO_ACID_TYPE[index] == 'P') ? -1.0 : 0.0;
+  }
+  
+  // else we are using energy model 1
+  else {
     if (index >= 0) {
       if (AMINO_ACID_TYPE[i] == 'H')
 	energy += (AMINO_ACID_TYPE[index] == 'H') ? -1.0 : 0.0;
@@ -259,7 +311,7 @@ double energy_of_individual_amino_acid(int i) {
     else
       energy += (AMINO_ACID_TYPE[i] == 'H') ? 0.5 : -0.5;
   }
-  
+
   return energy;
 }
 
@@ -310,8 +362,8 @@ void set_amino_acid_coords(int index, int new_x, int new_y, int new_z) {
 }
 
 // returns the acceptance of an MC move based on the potential energy of the system
-bool accepted(double new_U) {
-  return ran3(MY_SEED) < min(1.0, exp(-(new_U - current_U) / T));
+bool accepted(double new_U, int temperature) {
+  return ran3(MY_SEED) < min(1.0, exp(-(new_U - current_U) / T[temperature]));
 }
 
 // returns a true if a corner flip is possible, and 
@@ -652,11 +704,7 @@ void clear_old_data() {
       neighbors[i][j] = 0;
     }
   }
-  /*
-  for (int i=0; i<5; i++)
-    for (int j=0; j<3; j++)
-      available_next_crankshaft_coords[i][j] = 0;
-  */
+
   for (int i=0; i<8; i++)
     for (int j=0; j<8; j++)
     crankshaft_possible_pairs[i][j] = 0;
