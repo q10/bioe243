@@ -31,7 +31,7 @@ void clear_old_data();
 // (no need to pass-by-value or worry about pointer syntax)
 const int NUM_AMINO_ACIDS = 36;
 char AMINO_ACID_TYPE[NUM_AMINO_ACIDS+1] = "HHPHHPPHPPPHPPHPHHHHPPPPHHPPHPHHHHPP";
-int NCYCLES=10000000, amino_acids[NUM_AMINO_ACIDS][3]; // 4th param of amino acids array is individual particle energy
+int NCYCLES=100000000, amino_acids[NUM_AMINO_ACIDS][3]; // 4th param of amino acids array is individual particle energy
 int AMINO_ACIDS_TEMPLATE[NUM_AMINO_ACIDS][3]; // the original particle positions; for start of each simulation
 double current_U, new_U, average_U, average_U_2, amino_acid_energies[NUM_AMINO_ACIDS];
 double T[] = {0.6, 0.8, 0.85, 1.0, 1.2, 1.4, 1.6};
@@ -50,7 +50,7 @@ int main( int argc, char **argv ) {
   if (grab_input_data(argc, argv) < 0)
     return -1;
   
-  for (int table_type=0; table_type<1; table_type++) {
+  for (int table_type=0; table_type<2; table_type++) {
     for (int temperature=0; temperature<7; temperature++) {
 
       initialize_energies(table_type);
