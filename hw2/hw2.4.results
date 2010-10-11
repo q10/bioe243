@@ -1,0 +1,14 @@
+Energy Model = Solvent-less Model;  Temperature = 0.6;  <U^2> = -776.741;  <U> = 51.3299;  C(T) = -5685.82
+Energy Model = Solvent-less Model;  Temperature = 0.8;  <U^2> = -278.986;  <U> = 9.35327;  C(T) = -458.087
+Energy Model = Solvent-less Model;  Temperature = 0.85;  <U^2> = -259.088;  <U> = 1.40498;  C(T) = -307.132
+Energy Model = Solvent-less Model;  Temperature = 1;  <U^2> = -308.306;  <U> = -17.6029;  C(T) = -618.166
+Energy Model = Solvent-less Model;  Temperature = 1.2;  <U^2> = -476.59;  <U> = -35.2044;  C(T) = -1429.95
+Energy Model = Solvent-less Model;  Temperature = 1.4;  <U^2> = -661.876;  <U> = -47.3349;  C(T) = -2073.19
+Energy Model = Solvent-less Model;  Temperature = 1.6;  <U^2> = -832.137;  <U> = -56.1387;  C(T) = -2489.8
+Energy Model = Solvent Model;  Temperature = 0.6;  <U^2> = -485.384;  <U> = 37.499;  C(T) = -3152.6
+Energy Model = Solvent Model;  Temperature = 0.8;  <U^2> = -212.398;  <U> = 1.27443;  C(T) = -267.527
+Energy Model = Solvent Model;  Temperature = 0.85;  <U^2> = -216.337;  <U> = -5.40476;  C(T) = -288.88
+Energy Model = Solvent Model;  Temperature = 1;  <U^2> = -295.09;  <U> = -21.4352;  C(T) = -754.558
+Energy Model = Solvent Model;  Temperature = 1.2;  <U^2> = -456.387;  <U> = -36.3718;  C(T) = -1482.75
+Energy Model = Solvent Model;  Temperature = 1.4;  <U^2> = -619.358;  <U> = -46.7783;  C(T) = -2005.4
+Energy Model = Solvent Model;  Temperature = 1.6;  <U^2> = -764.218;  <U> = -54.3574;  C(T) = -2324.34
