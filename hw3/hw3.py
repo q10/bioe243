@@ -223,7 +223,7 @@ class ForwardEuler(Algorithm):
                     self.update_energy_between(first, other, old_coords)
                     k+=1
 
-            self.velocity_rescale()
+            #self.velocity_rescale()
 
             self.update_observables()
 
@@ -272,6 +272,6 @@ class VelocityVerlet(Algorithm):
             dvz = (first.fz*DT)/(2*first.mz)
             first.add_velocity(dvx, dvy, dvz)
             
-            self.velocity_rescale()
+            #self.velocity_rescale()
 
             self.update_observables()
