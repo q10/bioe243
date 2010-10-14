@@ -21,7 +21,7 @@ SELECT = int(sys.argv[1])
 
 # initialize system
 VV_sim = VelocityVerlet("LJ_108_1.txt", density=RHO[SELECT], temp=TARGET_TEMP[SELECT])
-timesteps=3
+timesteps=30000
 N = len(VV_sim.particles)
 old_positions = []
 avg_VV_T = 0.0
