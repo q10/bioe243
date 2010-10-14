@@ -21,7 +21,7 @@ SELECT = int(sys.argv[1])
 
 # initialize system
 VV_sim = VelocityVerlet("LJ_108_1.txt", density=RHO[SELECT], temp=TARGET_TEMP[SELECT])
-timesteps=30000
+timesteps=3
 N = len(VV_sim.particles)
 old_positions = []
 avg_VV_T = 0.0
@@ -56,5 +56,5 @@ elif SELECT == 2:
 else:
     f = open('hw3.4.table_row_4.results','w')
 
-print >>f, "Input rho* = " + str(RHO[SELECT]) + "\nInput temp* = " + str(TARGET_TEMP[SELECT]) + "\nAverage temp* = " + str(avg_VV_T) + "\nSimulated D* = " + mean_square_displacement
+print >>f, "Input rho* = " + str(RHO[SELECT]) + "\nInput temp* = " + str(TARGET_TEMP[SELECT]) + "\nAverage temp* = " + str(avg_VV_T) + "\nSimulated D* = " + str(mean_square_displacement)
 f.close()
