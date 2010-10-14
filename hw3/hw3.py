@@ -2,10 +2,10 @@ from math import sqrt, log, exp, pi
 from common import Ran3, BoxMueller
 
 RHO = 0.8442
-MY_SEED = 59375327573
 DT = 0.001
 DTT = DT**2.0
 TARGET_TEMP = 0.742
+NUM_PARTICLES = 108
 # Because RHO* is 0.8442 and we assumed that sigma is 1,
 # then RHO* = (N/V)(sigma^3) = N/V
 # so V = N/RHO* = 127.93177
@@ -14,13 +14,14 @@ CUBE_BOUNDARY = 5.038788574147522
 HALF_BOUNDARY = CUBE_BOUNDARY/2.0
 
 class Particle:
-    def __init__(self, x, y, z):
+    def __init__(self, x, y, z, boundary):
         self.x, self.y, self.z = x, y, z
         self.vx, self.vy, self.vz = 0, 0, 0
         self.fx, self.fy, self.fz, = 0, 0, 0
         # mass, generalized to suit mass matrices
         self.mx, self.my, self.mz = 1, 1, 1
         self.energy = 0
+        self.boundary = boundary
 
     def __str__(self):
         position = "Position (" + str(self.x) + ", " + str(self.y) + ", " + str(self.z) + ")\n"
@@ -40,18 +41,18 @@ class Particle:
         self.x += dx
         self.y += dy
         self.z += dz
-        if self.x < -HALF_BOUNDARY:
-            self.x %= HALF_BOUNDARY
-        if self.x > HALF_BOUNDARY:
-            self.x %= -HALF_BOUNDARY
-        if self.y < -HALF_BOUNDARY:
-            self.y %= HALF_BOUNDARY
-        if self.y > HALF_BOUNDARY:
-            self.y %= -HALF_BOUNDARY
-        if self.z < -HALF_BOUNDARY:
-            self.z %= HALF_BOUNDARY
-        if self.z > HALF_BOUNDARY:
-            self.z %= -HALF_BOUNDARY
+        if self.x < -self.boundary:
+            self.x %= self.boundary
+        if self.x > self.boundary:
+            self.x %= -self.boundary
+        if self.y < -self.boundary:
+            self.y %= self.boundary
+        if self.y > self.boundary:
+            self.y %= -self.boundary
+        if self.z < -self.boundary:
+            self.z %= self.boundary
+        if self.z > self.boundary:
+            self.z %= -self.boundary
     def add_velocity(self, dvx, dvy, dvz):
         self.vx += dvx
         self.vy += dvy
@@ -62,10 +63,14 @@ class Particle:
         self.fz += dfz
 
 class Algorithm:
-    def __init__(self, filename):
+    def __init__(self, filename, temp=TARGET_TEMP, density=RHO, num=NUM_PARTICLES):
         self.system_potential_energy, self.system_kinetic_energy, self.system_total_energy, self.energy_truncation = 0.0, 0.0, 0.0, 0.0
         self.time, self.system_average_energy_per_particle = 0.0, 0.0
         self.particles = []
+        self.target_temp = temp
+        self.N = num
+        self.rho = density
+        self.cube_boundary = ((self.N/self.rho)**(1.0/3.0))/2.0
 
         # initialize particles, positions, and velocities
         r_file = open(filename, 'r')
@@ -73,14 +78,16 @@ class Algorithm:
         r_line = r_file.readline()
         v_line = v_file.readline()
 
-        while r_line != '' and v_line != '':
+        j = 0
+        while r_line != '' and v_line != '' and j < self.N:
             r = map(float, r_line.strip().replace(',', ' ').split())
             v = map(float, v_line.strip().replace(',', ' ').split())
-            tmp = Particle(r[0], r[1], r[2])
+            tmp = Particle(r[0], r[1], r[2], self.cube_boundary)
             tmp.add_velocity(v[0], v[1], v[2])
             self.particles.append(tmp)
             r_line = r_file.readline()
             v_line = v_file.readline()
+            j+=1
         r_file.close()
         v_file.close()
 
@@ -97,7 +104,7 @@ class Algorithm:
         
         # calculate energy truncation
         # the integral evaluates to (8/9)*PI*rho*N*((sigma/rc^9)-3(sigma/rc^3))
-        r_cut = 1.0/HALF_BOUNDARY
+        r_cut = 1.0/self.cube_boundary
         self.energy_truncation = 8.0 * pi * len(self.particles) * RHO * ((r_cut**9.0)-(3.0*(r_cut**3.0))) / 9.0
         self.update_observables()
 
@@ -114,8 +121,8 @@ class Algorithm:
             current_temp += (first.mx*(first.vx**2)) + (first.my*(first.vy**2)) + (first.mz*(first.vz**2))
         current_temp /= 3*len(self.particles)
         
-        if abs(current_temp-TARGET_TEMP) > 0.001:
-            gamma = sqrt(TARGET_TEMP/current_temp)
+        if abs(current_temp-self.target_temp) > 0.001:
+            gamma = sqrt(self.target_temp/current_temp)
             for first in self.particles:
                 first.vx, first.vy, first.vz = first.vx*gamma, first.vy*gamma, first.vz*gamma
         
@@ -181,24 +188,24 @@ class Algorithm:
 
     # Enforce mirror image convention
     def mirror_convention(self, dx, dy, dz):
-        if dx < -HALF_BOUNDARY:
-            dx %= HALF_BOUNDARY
-        if dx > HALF_BOUNDARY:
-            dx %= -HALF_BOUNDARY
-        if dy < -HALF_BOUNDARY:
-            dy %= HALF_BOUNDARY
-        if dy > HALF_BOUNDARY:
-            dy %= -HALF_BOUNDARY
-        if dz < -HALF_BOUNDARY:
-            dz %= HALF_BOUNDARY
-        if dz > HALF_BOUNDARY:
-            dz %= -HALF_BOUNDARY
+        if dx < -self.cube_boundary:
+            dx %= self.cube_boundary
+        if dx > self.cube_boundary:
+            dx %= -self.cube_boundary
+        if dy < -self.cube_boundary:
+            dy %= self.cube_boundary
+        if dy > self.cube_boundary:
+            dy %= -self.cube_boundary
+        if dz < -self.cube_boundary:
+            dz %= self.cube_boundary
+        if dz > self.cube_boundary:
+            dz %= -self.cube_boundary
         return (dx, dy, dz)
 
 
 class ForwardEuler(Algorithm):
-    def __init__(self, filename="LJ_108_1.txt"):
-        Algorithm.__init__(self, filename)
+    def __init__(self, filename="LJ_108_1.txt", temp=TARGET_TEMP, density=RHO, num=NUM_PARTICLES):
+        Algorithm.__init__(self, filename, temp, density, num)
 
     def MD_step(self):
         self.time += DT
@@ -229,8 +236,8 @@ class ForwardEuler(Algorithm):
 
 
 class VelocityVerlet(Algorithm):
-    def __init__(self, filename="LJ_108_1.txt"):
-        Algorithm.__init__(self, filename)
+    def __init__(self, filename="LJ_108_1.txt", temp=TARGET_TEMP, density=RHO, num=NUM_PARTICLES):
+        Algorithm.__init__(self, filename, temp, density, num)
         
     def MD_step(self):
         self.time += DT
