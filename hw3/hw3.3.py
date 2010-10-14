@@ -3,7 +3,7 @@ from common import *
 from math import exp, pi
 from numpy import histogram
 import pylab
-'''
+
 ## HW3.3a STUFF
 
 r = BoxMueller(50232364960420517)
@@ -34,10 +34,11 @@ pylab.clf()
 (n, bins) = y_histogram
 pylab.plot(.5*(bins[1:]+bins[:-1]), n)
 pylab.savefig('hw3.3a.y_histogram.png')
-'''
+
 
 
 ## HW3.3c STUFF
+## MUST FIRST COMMENT OUT VELOCITY_RESCALE() IN VELOCITYVELET.MD_STEP() AND FORWARDEULER.MD_STEP()
 
 steps = 5000
 
@@ -78,6 +79,7 @@ avg_FE_T = (2*avg_FE_KE)/((3*len(FE_sim.particles))-3)
 f = open('hw3.3c.results','w')
 print >>f, "Average temperature in Velocity Verlet: " + str(avg_VV_T)
 print >>f, "Average temperature in Forward Euler: " + str(avg_FE_T) + "\n\n"
+print >>f, "time\tVV_KE\tVV_PE\tVV_TE\tFE_KE\tFE_PE\tFE_TE"
 for i in range(steps+1):
     print >>f, str(time[i]) + "\t" + str(VV_KE[i]) + "\t" + str(VV_PE[i]) + "\t" + str(VV_TE[i]) + "\t" + str(FE_KE[i]) + "\t" + str(FE_PE[i]) + "\t" + str(FE_TE[i]) + "\n"
 f.close()
