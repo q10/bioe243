@@ -85,7 +85,7 @@ int main( int argc, char **argv ) {
 void calculate_and_print_values(int table_type, int temperature) {
   average_U /= (double)(NCYCLES * NUM_AMINO_ACIDS); 
   average_U_2 /= (double)(NCYCLES * NUM_AMINO_ACIDS);
-  double C_T = (average_U_2 - pow(average_U, 2)) / T[temperature];
+  double C_T = (average_U_2 - pow(average_U, 2)) / (pow(T[temperature], 2));
   string str = (table_type < 1) ? "Solvent-less Model;  " : "Solvent Model;  ";
   cout << "Energy Model = " << str
        << "Temperature = " << T[temperature] 
