@@ -10,8 +10,6 @@ NUM_PARTICLES = 108
 # then RHO* = (N/V)(sigma^3) = N/V
 # so V = N/RHO* = 127.93177
 # so cube side length is 5.03878858
-CUBE_BOUNDARY = 5.038788574147522
-HALF_BOUNDARY = CUBE_BOUNDARY/2.0
 
 class Particle:
     def __init__(self, x, y, z, boundary):
@@ -98,9 +96,7 @@ class Algorithm:
                     self.add_energy(first, other)
 
         # initialize forces
-        for tmp_j in range(len(self.particles)-1):
-            for tmp_k in range(tmp_j+1, len(self.particles)):
-                self.add_force_between(self.particles[tmp_j], self.particles[tmp_k])
+        self.update_forces()
         
         # calculate energy truncation
         # the integral evaluates to (8/9)*PI*rho*N*((sigma/rc^9)-3(sigma/rc^3))
@@ -142,26 +138,6 @@ class Algorithm:
         (dx, dy, dz) = self.mirror_convention(first.x-other.x, first.y-other.y, first.z-other.z)
         r = sqrt((dx**2.0)+(dy**2.0)+(dz**2.0))
         first.energy += 4.0 * (((1/r)**12.0) - ((1/r)**6.0))
-        
-    def update_energy_between(self, first, other, old_coords):
-        (x, y, z) = old_coords
-        (odx, ody, odz) = self.mirror_convention(x-other.x, y-other.y, z-other.z)
-        (dx, dy, dz) = self.mirror_convention(first.x-other.x, first.y-other.y, first.z-other.z)
-        
-        o_r, r = sqrt((odx**2.0)+(ody**2.0)+(odz**2.0)), sqrt((dx**2.0)+(dy**2.0)+(dz**2.0))        
-
-        # calculate and add LJ potential, remove old LJ potential in old particle
-        odE = 4.0 * (((1/o_r)**12.0) - ((1/o_r)**6.0))
-        dE = 4.0 * (((1/r)**12.0) - ((1/r)**6.0))
-        first.energy += dE
-        other.energy += -odE + dE
-
-    def collect_old_df_values_for(self, first):
-        old_df_values = []
-        for other in self.particles:
-            if other is not first:
-                old_df_values.append(self.force_between(first, other))
-        return old_df_values
 
     # calculate and add new force between two particles
     def add_force_between(self, first, other):        
@@ -169,22 +145,27 @@ class Algorithm:
         first.add_force(-dfx, -dfy, -dfz)
         other.add_force(dfx, dfy, dfz)
 
-    # updates the force between two particles
-    def update_force_between(self, first, other, old_df_values, k):
-        # remove old force
-        (dfx, dfy, dfz) = old_df_values[k]
-        first.add_force(dfx, dfy, dfz)
-        other.add_force(-dfx, -dfy, -dfz)
-
-        # calculate and add new force
-        self.add_force_between(first, other)
-
     # calculate force in between two particles        
     def force_between(self, first, other):
         (dx, dy, dz) = self.mirror_convention(first.x-other.x, first.y-other.y, first.z-other.z)
         r = sqrt((dx**2.0)+(dy**2.0)+(dz**2.0))
         tmp_force = -24.0 * ((2.0 * ((1/r)**14.0)) - ((1/r)**8.0))
         return (tmp_force*dx, tmp_force*dy, tmp_force*dz)
+
+    # sets energies
+    def update_energies(self):
+        for first in self.particles:
+            first.energy = 0.0
+            for other in self.particles:
+                if other is not first:
+                    self.add_energy(first, other)
+
+    # sets forces, assumes, they are pre-initialized to zero
+    def update_forces(self):
+        for tmp_j in range(len(self.particles)-1):
+            for tmp_k in range(tmp_j+1, len(self.particles)):
+                self.add_force_between(self.particles[tmp_j], self.particles[tmp_k])
+
 
     # Enforce mirror image convention
     def mirror_convention(self, dx, dy, dz):
@@ -209,30 +190,19 @@ class ForwardEuler(Algorithm):
 
     def MD_step(self):
         self.time += DT
-        for first in self.particles:
-            # collect old df values and old coords
-            old_df_values = self.collect_old_df_values_for(first)
-            old_coords = first.position()
-            
+        for first in self.particles:            
             # update position
             first.add_position(first.vx*DT, first.vy*DT, first.vz*DT)
 
             # update velocity
-            first.add_velocity(first.fx*DT/first.mx, first.fy*DT/first.my, first.fz*DT/first.mz)            
+            first.add_velocity(first.fx*DT/first.mx, first.fy*DT/first.my, first.fz*DT/first.mz)
 
-            # erase old forces between this particle and the rest
-            # replace with new forces
-            # update energy of particle using same loop
-            k, first.energy = 0, 0.0
-            for other in self.particles:
-                if other is not first:
-                    self.update_force_between(first, other, old_df_values, k)
-                    self.update_energy_between(first, other, old_coords)
-                    k+=1
+        # update forces and energies
+        self.update_forces()
+        self.update_energies()
 
-            self.velocity_rescale()
-
-            self.update_observables()
+        #self.velocity_rescale()
+        self.update_observables()
 
 
 class VelocityVerlet(Algorithm):
@@ -241,11 +211,7 @@ class VelocityVerlet(Algorithm):
         
     def MD_step(self):
         self.time += DT
-        for first in self.particles:
-            # collect old df and dE values
-            old_df_values = self.collect_old_df_values_for(first)
-            old_coords = first.position()                
-            
+        for first in self.particles:           
             # second terms of Taylor expansion, for less computing in next 2 steps
             sx = first.fx/(2*first.mx)
             sy = first.fy/(2*first.my)
@@ -263,22 +229,19 @@ class VelocityVerlet(Algorithm):
             dvz = sz*DT
             first.add_velocity(dvx, dvy, dvz)
 
-            # erase old forces between this particle and the rest
-            # use new positions to calculate new forces, and
-            # use same loop to update energy of particle
-            k, first.energy = 0, 0.0
-            for other in self.particles:
-                if other is not first:
-                    self.update_force_between(first, other, old_df_values, k)
-                    self.update_energy_between(first, other, old_coords)
-                    k+=1
-
-            # update velocity at full step with new forces
+            # reset force
+            first.fx, first.fy, first.fz = 0.0, 0.0, 0.0
+            
+        # update forces and energies
+        self.update_forces()
+        self.update_energies()
+        
+        # update velocity at second half step with new forces
+        for first in self.particles:
             dvx = (first.fx*DT)/(2*first.mx)
             dvy = (first.fy*DT)/(2*first.my)
             dvz = (first.fz*DT)/(2*first.mz)
             first.add_velocity(dvx, dvy, dvz)
             
-            self.velocity_rescale()
-
-            self.update_observables()
+        #self.velocity_rescale()
+        self.update_observables()
