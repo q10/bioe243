@@ -213,9 +213,9 @@ class VelocityVerlet(Algorithm):
         self.time += DT
         for first in self.particles:           
             # second terms of Taylor expansion, for less computing in next 2 steps
-            sx = first.fx/(2*first.mx)
-            sy = first.fy/(2*first.my)
-            sz = first.fz/(2*first.mz)
+            sx = first.fx/(2.0*first.mx)
+            sy = first.fy/(2.0*first.my)
+            sz = first.fz/(2.0*first.mz)
             
             # update position         
             dx = (first.vx*DT) + (sx*DTT)
