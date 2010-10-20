@@ -20,6 +20,7 @@ class Particle:
         self.mx, self.my, self.mz = 1, 1, 1
         self.energy = 0
         self.boundary = boundary
+        self.enclose_to_boundary()
 
     def __str__(self):
         position = "Position (" + str(self.x) + ", " + str(self.y) + ", " + str(self.z) + ")\n"
@@ -33,12 +34,8 @@ class Particle:
         return (self.vx, self.vy, self.vz)
     def force(self):
         return (self.fx, self.fy, self.fz)
-    
-    # boundary conditions
-    def add_position(self, dx, dy, dz):
-        self.x += dx
-        self.y += dy
-        self.z += dz
+
+    def enclose_to_boundary(self):
         if self.x < -self.boundary:
             self.x %= self.boundary
         if self.x > self.boundary:
@@ -51,6 +48,13 @@ class Particle:
             self.z %= self.boundary
         if self.z > self.boundary:
             self.z %= -self.boundary
+    
+    # boundary conditions
+    def add_position(self, dx, dy, dz):
+        self.x += dx
+        self.y += dy
+        self.z += dz
+        self.enclose_to_boundary()
     def add_velocity(self, dvx, dvy, dvz):
         self.vx += dvx
         self.vy += dvy
