@@ -131,8 +131,8 @@ seed = Ran3(1249834071)
 for i in range(2):
     filename = 'coord.' + str(i+1)
     for j in range(3):
-        a = SimulatedAnneal_LJ(filename, r_seed=seed.generate(), schedule="geometric")
-        b = SimulatedAnneal_LJ(filename, r_seed=seed.generate(), schedule="linear")
+        a = SimulatedAnneal_LJ(filename, r_seed=int(1E12*seed.generate()), schedule="geometric")
+        b = SimulatedAnneal_LJ(filename, r_seed=int(1E12*seed.generate()), schedule="linear")
         a.run()
         b.run()
         print >>f, "File = " + filename + "; Schedule = geometric; Run #" + str(j+1) + "; Global Minimum PE = " + str(a.system_potential_energy())
