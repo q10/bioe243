@@ -98,14 +98,7 @@ class SimulatedAnneal_LJ(System):
         self._restore_old_energies(old_system_table[3])
     
     def run(self):
-        while self.temperature > 0.001:
-            # run cooling schedule
-            if self.cooling_schedule == "linear":
-                self.temperature -= 0.01
-            # else the cooling schedule is geometric
-            else:
-                self.temperature *= 0.99
-                
+        while self.temperature > 0.001:    
             old_system_table = self.save_old_system()
 
             # Run MD moves
@@ -119,8 +112,16 @@ class SimulatedAnneal_LJ(System):
                 # Revert back to state prior to simulating at current temperature,
                 # since the new state has a higher energy AND rand is NOT < exp(-dE)
                 self._restore_old_system(old_system_table)
+
+            # run cooling schedule
+            if self.cooling_schedule == "linear":
+                self.temperature -= 0.01
+            # else the cooling schedule is geometric
+            else:
+                self.temperature *= 0.99
+            
             # print self.system_potential_energy()
-                
+    
 
 ###########################
 # RUN CODE

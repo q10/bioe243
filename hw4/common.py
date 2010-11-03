@@ -285,14 +285,15 @@ class Lattice:
         
     def __create_beads(self, filename):
         # initialize bead positions
-        r_file = open(filename, 'r') #protein_lattice_config_1
+        r_file = open(filename, 'r')
         r_line = r_file.readline()
         while r_line != '':
-            r = map(float, r_line.strip().replace(',', ' ').split())
-            self.beads.append(AABead(r[0],r[1],r[2], "H"))
+            r = r_line.strip().replace(',', ' ').split()
+            typ = r.pop(0)
+            r = map(float, r)
+            self.beads.append(AABead(r[0], r[1], r[2], typ))
             r_line = r_file.readline()
         r_file.close()
-
 
     def _move_bead_to(self, i, coord):
         (x, y, z) = coord
@@ -309,6 +310,37 @@ class Lattice:
             possible_bead = self.find_bead_at_this_coordinate(coord)
             energy += self.energy_between(bead, possible_bead)
         return energy
+
+    def collect_positions(self):
+        positions = []
+        for bead in self.beads:
+            positions.append(bead.position())
+        return positions
+    
+    def collect_energies(self):
+        energies = []
+        for bead in self.beads:
+            energies.append(bead.energy)
+        return energies
+
+    def system_potential_energy(self):
+        return sum(self.collect_energies())/2.0
+    
+    def _restore_old_positions(self, old_positions_table):
+        for i in range(self.N):
+            (x, y, z) = old_positions_table[i]
+            self.beads[i].set_position(x, y, z)
+
+    def _restore_old_energies(self, old_energies_table):
+        for i in range(self.N):
+            self.beads[i].set_energy(old_energies_table[i])
+
+    def save_old_system(self):
+        return(self.collect_positions(), self.collect_energies())
+
+    def _restore_old_system(self, old_system_table):
+        self._restore_old_positions(old_system_table[0])
+        self._restore_old_energies(old_system_table[1])
 
     def neighbor_coords_of_bead(self, bead):
         (x, y, z) = bead.position()
@@ -539,20 +571,29 @@ class Lattice:
         
         return end_moves_possible
 
-    def mc_moves_available(self, index):
+    def choose_end_move(self, given_end_moves):
+        random_index = int(self.rand.generate()*len(given_end_moves))
+        return [given_end_moves[random_index]]
+    
+    def choose_crankshaft(self, given_crankshaft_moves):
+        random_index = int(self.rand.generate()*len(given_crankshaft_moves))
+        return given_crankshaft_moves[random_index]
+
+    # returns a coordinate or pair of coordinates to move to
+    def mc_move(self, index):
         possible_moves = self.end_moves_possible_for_bead(index)
         if possible_moves == []:
             possible_moves = self.corner_flip_possible_for_bead(index)
             if possible_moves == []:
                 possible_move = self.crankshafts_possible_for_bead(index)
                 if possible_moves == []:
-                    return []
+                    return ([], '')
                 else:
-                    return (possible_moves, "crankshaft")
+                    return (self.choose_crankshaft(possible_moves), "crankshaft")
             else:
                 return (possible_moves, "corner flip")
         else:
-            return (possible_moves, "end move")
+            return (self.choose_end_move(possible_moves), "end move")
 
     def mc_accept(self, old_energy, new_energy):
         return self.rand.generate() < min(1.0, exp(-(new_energy - old_energy) / self.temperature))
