@@ -89,7 +89,7 @@ class Particle(Bead):
         self.vx, self.vy, self.vz = 0, 0, 0
         self.fx, self.fy, self.fz, = 0, 0, 0
         self.boundary = 0
-	self.m = 1
+        self.m = 1
         self.is_closed_interval = False
         
     def __str__(self):
@@ -274,11 +274,11 @@ class System:
 class Lattice:
     def __init__(self, filename, temp):
         self.beads = []
-        self.__create_particles(filename)
+        self.__create_beads(filename)
 
         # set system parameters
         self.temperature = temp
-        self.N = len(self.particles)
+        self.N = len(self.beads)
         self.rand = Ran3(234257424417)
         
         self._update_energies()
@@ -289,7 +289,7 @@ class Lattice:
         r_line = r_file.readline()
         while r_line != '':
             r = map(float, r_line.strip().replace(',', ' ').split())
-            self.particles.append(AABead(r[0],r[1],r[2]))
+            self.beads.append(AABead(r[0],r[1],r[2], "H"))
             r_line = r_file.readline()
         r_file.close()
 
@@ -307,7 +307,7 @@ class Lattice:
         neighbor_coords = self.neighbor_coords_of_bead(bead)
         for coord in neighbor_coords:
             possible_bead = self.find_bead_at_this_coordinate(coord)
-                energy += self.energy_between(bead, possible_bead)
+            energy += self.energy_between(bead, possible_bead)
         return energy
 
     def neighbor_coords_of_bead(self, bead):
@@ -317,9 +317,9 @@ class Lattice:
         neighbor_coords.append((x-1,y,z))
         neighbor_coords.append((x,y+1,z))
         neighbor_coords.append((x,y-1,z))
-        neighbors_coord.append((x,y,z+1))
+        neighbor_coords.append((x,y,z+1))
         neighbor_coords.append((x,y,z-1))
-        return neighbors_coords
+        return neighbor_coords
 
     def find_bead_at_this_coordinate(self, coords):
         for bead in self.beads:
@@ -358,18 +358,36 @@ class Lattice:
     def corner_flip_possible_for_bead(self, i):
         # account for end molecules
         if i == 0 or i == self.N-1:
-            return False
-        elif self.find_bead_at_this_coordinate(self.corner_coord_of_bead(i)) == None:
-            return True
-        return False
+            return []
+        possible_corner = self.corner_coord_of_bead(i)
+        if possible_corner == None:
+            return []
+        elif self.find_bead_at_this_coordinate(possible_corner) == None:
+            return [possible_corner]
+        return []
 
     def corner_coord_of_bead(self, i):
+        # account for end molecules
+        if i == 0 or i == self.N-1:
+            return None
+        
         left = self.beads[i-1]
         middle = self.beads[i]
         right = self.beads[i+1]
-        corner = None
         
+        # check if left, middle, and center are NOT colinear
+        code = 0
+        if middle.x == left.x and middle.x == right.x:
+            code += 1
+        if middle.y == left.y and middle.y == right.y:
+            code += 1
+        if middle.z == left.z and middle.z == right.z:
+            code += 1
+        if code > 1:
+            return None
+                
         # find the opposite corner's coordinates
+        corner = None
         if middle.x == left.x and middle.x == right.x:
             if middle.y == left.y:
                 corner = (middle.x, right.y, left.z)
@@ -380,11 +398,14 @@ class Lattice:
                 corner = (right.x, middle.y, left.z)
             else:
                 corner = (left.x, middle.y, right.z)
-        else:
-            if middle.x == x = left.x:
+        elif middle.z == left.z and middle.z == right.z:
+            if middle.x == left.x:
                 corner = (right.x, left.y, middle.z)
             else:
                 corner = (left.x, right.y, middle.z)
+        else:
+            return None
+        
         return corner
             
     def crankshafts_possible_for_bead(self, index):
@@ -400,105 +421,62 @@ class Lattice:
             (just the ones that are both open and possible to rotate to), and 
             places the new coords in pairs into available_next_coords' row 0-5      
         '''
-        a = self.beads[index-2]
-        b = self.beads[index-1]
-        c = self.beads[index]
-        d = self.beads[index+1]
-        e = self.beads[index+2]
-        f = self.beads[index+3]
-        
         # crankshaft cannot be performed on the first or last two amino acids
         if index < 2 or index > self.N-3:
             return []
 
-        all_crankshafts_possible = self.all_crankshafts_possible(index)
-        tmp_crankshafts_possible = []
+        # if this position is not a crankshaft to begin with, then return null
+        all_crankshafts_possible = self.all_crankshafts_possible_for_bead(index)
+        if all_crankshafts_possible == []:
+            return []
+
+        #a = self.beads[index-2]
+        b = self.beads[index-1]
+        c = self.beads[index]
+        #d = self.beads[index+1]
+        e = self.beads[index+2]
         
         # try each of the four available pairs of crankshaft positions (including old one)
-        # if both coords empty, then add them to available_next_coords
-        for coord_pair in trial_crankshafts_possible:
-            if find_bead_at_this_coordinate(coord_pair[0]) == None and find_bead_at_this_coordinate(coord_pair[1]) == None:
-                tmp_crankshafts_possible.append(coord_pair)
+        # if both coords empty, then add them to filtered_crankshafts_possible
+        filtered_crankshafts_possible = []
+        for coord_pair in all_crankshafts_possible:
+            if self.find_bead_at_this_coordinate(coord_pair[0]) == None and self.find_bead_at_this_coordinate(coord_pair[1]) == None:
+                filtered_crankshafts_possible.append(coord_pair)
 
-        final_possible_crankshafts = []
         # even though the position is possible, the *rotation* into that position may not be possible
         # b/c it's blocked, so this part checks for that
-        same_x = False, same_y = False, same_z = False, okay_to_copy = False;
-        '''
-        if (crankshaft_possible_pairs[2*i][0] == amino_acids[index][0])
-            same_x = true;
-        if (crankshaft_possible_pairs[2*i][1] == amino_acids[index][1])
-            same_y = true;
-        if (crankshaft_possible_pairs[2*i][2] == amino_acids[index][2])
-            same_z = true;
+        final_possible_crankshafts = []
+        for fil in filtered_crankshafts_possible:
+            same_x, same_y, same_z, okay_to_copy = False, False, False, False
+            if (fil[0][0] == c.x):
+                same_x = True
+            if (fil[0][1] == c.y):
+                same_y = True
+            if (fil[0][2] == c.z):
+                same_z = True
 
-        if ((same_x && same_y) || (same_y && same_z) || (same_z && same_x)) {
-            if (same_x)
-                okay_to_copy = okay_to_copy || (find_amino_acid_in_this_coordinate(amino_acids[index-1][0]+1, 
-                                                                                 amino_acids[index-1][1], 
-                                                                                 amino_acids[index-1][2]) < 0 &&
-                                              find_amino_acid_in_this_coordinate(amino_acids[index+2][0]+1, 
-                                                                                 amino_acids[index+2][1], 
-                                                                                 amino_acids[index+2][2]) < 0) || 
-                (find_amino_acid_in_this_coordinate(amino_acids[index-1][0]-1, 
-                                                    amino_acids[index-1][1], 
-                                                    amino_acids[index-1][2]) < 0 &&
-                 find_amino_acid_in_this_coordinate(amino_acids[index+2][0]-1, 
-                                                    amino_acids[index+2][1], 
-                                                    amino_acids[index+2][2]) < 0);
-            if (same_y)
-              okay_to_copy = okay_to_copy || (find_amino_acid_in_this_coordinate(amino_acids[index-1][0], 
-                                                                                 amino_acids[index-1][1]+1, 
-                                                                                 amino_acids[index-1][2]) < 0 &&
-                                              find_amino_acid_in_this_coordinate(amino_acids[index+2][0], 
-                                                                                 amino_acids[index+2][1]+1, 
-                                                                                 amino_acids[index+2][2]) < 0) || 
-                (find_amino_acid_in_this_coordinate(amino_acids[index-1][0], 
-                                                    amino_acids[index-1][1]-1, 
-                                                    amino_acids[index-1][2]) < 0 &&
-                 find_amino_acid_in_this_coordinate(amino_acids[index+2][0], 
-                                                    amino_acids[index+2][1]-1, 
-                                                    amino_acids[index+2][2]) < 0);
-            if (same_z)
-              okay_to_copy = okay_to_copy || (find_amino_acid_in_this_coordinate(amino_acids[index-1][0], 
-                                                                                 amino_acids[index-1][1], 
-                                                                                 amino_acids[index-1][2]+1) < 0 &&
-                                              find_amino_acid_in_this_coordinate(amino_acids[index+2][0], 
-                                                                                 amino_acids[index+2][1], 
-                                                                                 amino_acids[index+2][2]+1) < 0) || 
-                (find_amino_acid_in_this_coordinate(amino_acids[index-1][0], 
-                                                    amino_acids[index-1][1], 
-                                                    amino_acids[index-1][2]-1) < 0 &&
-                 find_amino_acid_in_this_coordinate(amino_acids[index+2][0], 
-                                                    amino_acids[index+2][1], 
-                                                    amino_acids[index+2][2]-1) < 0);
-          }
+            if (same_x and same_y) or (same_y and same_z) or (same_z and same_x):
+                if (same_x):
+                    okay_to_copy = okay_to_copy or (self.find_bead_at_this_coordinate((b.x+1, b.y, b.z)) == None and self.find_bead_at_this_coordinate((e.x+1, e.y, e.z)) == None)
+                    okay_to_copy = okay_to_copy or (self.find_bead_at_this_coordinate((b.x-1, b.y, b.z)) == None and self.find_bead_at_this_coordinate((e.x-1, e.y, e.z)) == None)
+                if (same_y):
+                    okay_to_copy = okay_to_copy or (self.find_bead_at_this_coordinate((b.x, b.y+1, b.z)) == None and self.find_bead_at_this_coordinate((e.x, e.y+1, e.z)) == None)
+                    okay_to_copy = okay_to_copy or (self.find_bead_at_this_coordinate((b.x, b.y-1, b.z)) == None and self.find_bead_at_this_coordinate((e.x, e.y-1, e.z)) == None)
+                if (same_z):
+                    okay_to_copy = okay_to_copy or (self.find_bead_at_this_coordinate((b.x, b.y, b.z+1)) == None and self.find_bead_at_this_coordinate((e.x, e.y, e.z+1)) == None)
+                    okay_to_copy = okay_to_copy or (self.find_bead_at_this_coordinate((b.x, b.y, b.z-1)) == None and self.find_bead_at_this_coordinate((e.x, e.y, e.z-1)) == None)
 
-          // if the crank position is not opposite, then turn is of course possible
-          else
-            okay_to_copy = true;
+            # if the crank position is NOT on opposite face, then turn is of course possible
+            else:
+                okay_to_copy = True
 
-          // now we finally copy coords
-          if (okay_to_copy) {
-            // copy coords (index)
-            available_next_coords[2*num_valid_crankshafts_possible][0] = crankshaft_possible_pairs[2*i][0];
-            available_next_coords[2*num_valid_crankshafts_possible][1] = crankshaft_possible_pairs[2*i][1];
-            available_next_coords[2*num_valid_crankshafts_possible][2] = crankshaft_possible_pairs[2*i][2];
-          
-            // copy coords (index+1)
-            available_next_coords[(2*num_valid_crankshafts_possible)+1][0] = crankshaft_possible_pairs[(2*i)+1][0];
-            available_next_coords[(2*num_valid_crankshafts_possible)+1][1] = crankshaft_possible_pairs[(2*i)+1][1];
-            available_next_coords[(2*num_valid_crankshafts_possible)+1][2] = crankshaft_possible_pairs[(2*i)+1][2];   
-          
-            // increment valid pairs
-            num_valid_crankshafts_possible++;
-          }
-        }
-      }
-      return num_valid_crankshafts_possible;
-    }
-'''
-    def all_crankshafts_possible(self, index):
+            # now we finally copy the pair to final_possible_crankshafts
+            if (okay_to_copy):
+                final_possible_crankshafts.append(fil)
+
+        return final_possible_crankshafts
+
+    def all_crankshafts_possible_for_bead(self, index):
         '''
             The crankshaft will be referred to as follows
                              (c = index)____________(d)
@@ -521,7 +499,7 @@ class Lattice:
         
         code = 0
         if b.x  == e.x:
-            code++
+            code += 1
         if b.y  == e.y:
             code += 3
         if b.z  == e.z:
@@ -536,14 +514,13 @@ class Lattice:
             return []
 
         possible_crankshaft_pairs = []
-        if (code == 4 || code == 6):
+        if (code == 4 or code == 6):
             possible_crankshaft_pairs.append([(b.x+1, b.y, b.z), (e.x+1, e.y, e.z)])
             possible_crankshaft_pairs.append([(b.x-1, b.y, b.z), (e.x-1, e.y, e.z)])
-
-        if (code == 4 || code == 8):
+        if (code == 4 or code == 8):
             possible_crankshaft_pairs.append([(b.x, b.y+1, b.z), (e.x, e.y+1, e.z)])
             possible_crankshaft_pairs.append([(b.x, b.y-1, b.z), (e.x, e.y-1, e.z)])
-        if (code == 6 || code == 8):
+        if (code == 6 or code == 8):
             possible_crankshaft_pairs.append([(b.x, b.y, b.z+1), (e.x, e.y, e.z+1)])
             possible_crankshaft_pairs.append([(b.x, b.y, b.z-1), (e.x, e.y, e.z-1)])
 
@@ -555,12 +532,27 @@ class Lattice:
             return []
         
         end_moves_possible = []
-        possible_coords = neighbor_coords_of_bead(self.beads[index])
+        possible_coords = self.neighbor_coords_of_bead(self.beads[index])
         for pos in possible_coords:
             if self.find_bead_at_this_coordinate(pos) == None:
                 end_moves_possible.append(pos)
         
         return end_moves_possible
+
+    def mc_moves_available(self, index):
+        possible_moves = self.end_moves_possible_for_bead(index)
+        if possible_moves == []:
+            possible_moves = self.corner_flip_possible_for_bead(index)
+            if possible_moves == []:
+                possible_move = self.crankshafts_possible_for_bead(index)
+                if possible_moves == []:
+                    return []
+                else:
+                    return (possible_moves, "crankshaft")
+            else:
+                return (possible_moves, "corner flip")
+        else:
+            return (possible_moves, "end move")
 
     def mc_accept(self, old_energy, new_energy):
         return self.rand.generate() < min(1.0, exp(-(new_energy - old_energy) / self.temperature))
