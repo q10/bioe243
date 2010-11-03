@@ -153,11 +153,11 @@ class System:
         # set system parameters
         self.temperature = temp
         self.N = len(self.particles)
-        self.rho = density
-        self.cube_boundary = ((self.N/self.rho)**(1.0/3.0))/2.0
+        #self.rho = density
+        #self.cube_boundary = ((self.N/self.rho)**(1.0/3.0))/2.0
         
-        for particle in self.particles:
-            particle.set_boundary(self.cube_boundary)
+        #for particle in self.particles:
+        #    particle.set_boundary(self.cube_boundary)
 
         self._update_energies()
         self._update_forces()
@@ -206,8 +206,8 @@ class System:
                 self.particles[j].add_force(dfx, dfy, dfz)
 
     def force_between(self, first, other):
-        #dx, dy, dz = first.x-other.x, first.y-other.y, first.z-other.z
-        (dx, dy, dz) = self.__mirror_convention(first.x-other.x, first.y-other.y, first.z-other.z)
+        dx, dy, dz = first.x-other.x, first.y-other.y, first.z-other.z
+        #(dx, dy, dz) = self.__mirror_convention(first.x-other.x, first.y-other.y, first.z-other.z)
         r = sqrt((dx**2.0)+(dy**2.0)+(dz**2.0))
         tmp_force = -24.0 * ((2.0 * ((1/r)**14.0)) - ((1/r)**8.0))
         return (tmp_force*dx, tmp_force*dy, tmp_force*dz)
@@ -222,8 +222,8 @@ class System:
                 self.particles[j].add_energy(dE)
 
     def energy_between(self, first, other):
-        #dx, dy, dz = first.x-other.x, first.y-other.y, first.z-other.z
-        (dx, dy, dz) = self.__mirror_convention(first.x-other.x, first.y-other.y, first.z-other.z)
+        dx, dy, dz = first.x-other.x, first.y-other.y, first.z-other.z
+        #(dx, dy, dz) = self.__mirror_convention(first.x-other.x, first.y-other.y, first.z-other.z)
         r = sqrt((dx**2.0)+(dy**2.0)+(dz**2.0))
         return 4.0 * (((1/r)**12.0) - ((1/r)**6.0))
 
