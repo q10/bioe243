@@ -1,0 +1,12 @@
+File = coord.1; Schedule = geometric; Run #1; Global Minimum PE = -97.456579038
+File = coord.1; Schedule = linear; Run #1; Global Minimum PE = -92.5223721227
+File = coord.1; Schedule = geometric; Run #2; Global Minimum PE = -97.4520106203
+File = coord.1; Schedule = linear; Run #2; Global Minimum PE = -92.5024083857
+File = coord.1; Schedule = geometric; Run #3; Global Minimum PE = -97.4596297817
+File = coord.1; Schedule = linear; Run #3; Global Minimum PE = -92.5044724176
+File = coord.2; Schedule = geometric; Run #1; Global Minimum PE = -97.5405370712
+File = coord.2; Schedule = linear; Run #1; Global Minimum PE = -97.1665070895
+File = coord.2; Schedule = geometric; Run #2; Global Minimum PE = -99.6238510502
+File = coord.2; Schedule = linear; Run #2; Global Minimum PE = -97.207388391
+File = coord.2; Schedule = geometric; Run #3; Global Minimum PE = -99.633769161
+File = coord.2; Schedule = linear; Run #3; Global Minimum PE = -97.2322643732
