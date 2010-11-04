@@ -60,5 +60,5 @@ seed = Ran3(1249834071)
 for i in range(3):
     a = SimulatedAnneal_Lattice(r_seed=int(1E12*seed.generate()))
     a.run()
-    print >>f, "File = " + filename + "; Schedule = geometric; Run #" + str(j+1) + "; Global Minimum PE = " + str(a.system_potential_energy())        
+    print >>f, "File = " + 'protein_lattice_config_1.txt' + "; Schedule = geometric; Run #" + str(i+1) + "; Global Minimum PE = " + str(a.system_potential_energy())
 f.close()
