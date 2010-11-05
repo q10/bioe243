@@ -1,0 +1,3 @@
+File = protein_lattice_config_1.txt; Schedule = geometric; Run #1; Global Minimum PE = -24.0
+File = protein_lattice_config_1.txt; Schedule = geometric; Run #2; Global Minimum PE = -21.0
+File = protein_lattice_config_1.txt; Schedule = geometric; Run #3; Global Minimum PE = -24.0
