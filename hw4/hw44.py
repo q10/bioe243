@@ -83,6 +83,7 @@ class GeneticAlgorithm:
         self.rand3 = Ran3(r_seed)
         self.crossover_probability = 0.5
         self.mutation_probability = 0.1
+        self.population_size = 200
 
         self.construct_population()
 
@@ -95,10 +96,10 @@ class GeneticAlgorithm:
             print self.population[i].system_potential_energy()
 
     def construct_population(self):
-        for i in range(200):
+        for i in range(2*self.population_size):
             self.population.append(Structure(seed=self.rand3.generate()))
         self.run_natural_selection()
-        self.population = self.population[:100] # select 100 to begin with
+        self.population = self.population[:self.population_size] # select 100 to begin with
     
     def run_natural_selection(self):
         self.population = filter(self.filter_out_different_length_structure, self.population)
@@ -142,6 +143,19 @@ class GeneticAlgorithm:
 
     def select_two_parents(self, best, biggest_energy_difference, total_fitness):
         # based probability on the fitness function in page 27 of Lecture 14 slides
+        i = int(self.rand3.generate()*len(self.population))
+        prob = abs(self.individual_fitness(i) / total_fitness)
+        while self.rand3.generate() >= prob:
+            i = int(self.rand3.generate()*len(self.population))
+            prob = abs(self.individual_fitness(i) / total_fitness)
+
+        j = int(self.rand3.generate()*len(self.population))
+        prob = abs(self.individual_fitness(j) / total_fitness)
+        while self.rand3.generate() >= prob or j == i:
+            j = int(self.rand3.generate()*len(self.population))
+            prob = abs(self.individual_fitness(i) / total_fitness)
+        return (i, j)
+
         '''
         i = int(self.rand3.generate()*len(self.population))
         inverse_prob = abs(self.individual_fitness(i)-self.individual_fitness(best))/biggest_energy_difference
@@ -155,9 +169,9 @@ class GeneticAlgorithm:
             j = int(self.rand3.generate()*len(self.population))
             inverse_prob = abs(self.individual_fitness(j)-self.individual_fitness(best))/biggest_energy_difference
         return (i, j)
-        '''
+        
         return (int(self.rand3.generate()*len(self.population)), int(self.rand3.generate()*len(self.population)))
-
+        '''
     def apply_crossover_and_create_children(self, index_j, index_k):
         if self.rand3.generate() < self.crossover_probability:
             if self.rand3.generate() < 0.7:
@@ -186,6 +200,20 @@ class GeneticAlgorithm:
             if tmp > self.individual_fitness(worst):
                 worst = i
         return (worst, best)
+
+    def find_second_best_index(self):
+        best = 0
+        for i in range(1, len(self.population)):
+            tmp = self.individual_fitness(i)
+            if tmp < self.individual_fitness(best):
+                best = i
+        second_best = 0
+        for j in range(1, len(self.population)):
+            tmp = self.individual_fitness(j)
+            if tmp < self.individual_fitness(second_best) and tmp != best:
+                second_best = j
+        return second_best
+
     
     def run(self):
         old_fitness_score, new_fitness_score = 0, 100
@@ -200,9 +228,10 @@ class GeneticAlgorithm:
             biggest_energy_difference = abs(self.individual_fitness(worst) - self.individual_fitness(best))
             total_fitness = self.population_total_fitness()
 
-            # save the best structure into the next generation (Elitism)
+            # save the two best structures into the next generation (Elitism)
             new_population.append(self.population[best])
-
+            new_population.append(self.population[self.find_second_best_index()])
+            
             while len(new_population) < len(self.population):
 
                 # select parents based on fitness scores
@@ -225,7 +254,7 @@ class GeneticAlgorithm:
                 new_population.extend(children)
 
             # ensures we get new population of same size
-            self.population = new_population[:100]
+            self.population = new_population[:self.population_size]
 
             # re-calculate fitness levels of all members of population
             for structure in self.population:
@@ -236,8 +265,8 @@ class GeneticAlgorithm:
             # for debugging
             print 'running'
             print self.individual_fitness(best)
-            '''for i in range(len(self.population)):
-                print self.population[i].system_potential_energy()'''
+            #for i in range(len(self.population)):
+             #   print self.population[i].system_potential_energy()
 
 
 ###########################
