@@ -13,15 +13,25 @@ class Structure(Lattice):
         self.rand2 = Ran3(seed)
         self.__create_beads(filename)
 
+    def __str__(self):
+        return self.vector
+    
     def __create_beads(self, filename):
         r_file = open(filename, 'r')
         r_line = r_file.readline()
 
-        # start coords at origin
+        # start coords at ONE unit from origin
         current_coords = (0, 0, 0)
+        direction_code = str(int(self.rand2.generate()*6))
+        next_coords = self.next_position(current_coords, direction_code)
+        bead_typ = r_line.strip().replace(',', ' ').split()
+        self.beads.append(AABead(next_coords[0], next_coords[1], next_coords[2], bead_typ[0]))
+        current_coords = next_coords
+        self.vector += direction_code
+        r_line = r_file.readline()
 
         # grow chain, and terminate early if chain end is "stuck" in a spot with no free adjacent positions
-        while r_line != '':            
+        while r_line != '':
             if self.spaces_left_for_next_bead(current_coords) == None:
                 break
             else:
@@ -31,8 +41,8 @@ class Structure(Lattice):
                     direction_code = str(int(self.rand2.generate()*6))
                     next_coords = self.next_position(current_coords, direction_code)
             
-                bead_typ = r_line.strip().replace(',', ' ').split()[0]
-                self.beads.append(AABead(next_coords[0], next_coords[1], next_coords[2], bead_typ))
+                bead_typ = r_line.strip().replace(',', ' ').split()
+                self.beads.append(AABead(next_coords[0], next_coords[1], next_coords[2], bead_typ[0]))
                 current_coords = next_coords
                 self.vector += direction_code
                 r_line = r_file.readline()
@@ -46,6 +56,8 @@ class Structure(Lattice):
         return None
         
     def regenerate_lattice_from_vector(self):
+        for bead in self.beads:
+            bead.set_position(0,0,0)
         current_coords = (0, 0, 0)
         for i in range(len(self.vector)):
             current_coords = self.next_position(current_coords, self.vector[i])
@@ -75,6 +87,8 @@ class Structure(Lattice):
     def evaluate_fitness(self):
         self._update_energies()
 
+
+
 # define optimization algorithm
 class GeneticAlgorithm:
     def __init__(self, filename='protein_lattice_config_1.txt', temp=INIT_TEMP, r_seed=SEED):
@@ -82,8 +96,8 @@ class GeneticAlgorithm:
         
         self.rand3 = Ran3(r_seed)
         self.crossover_probability = 0.5
-        self.mutation_probability = 0.1
-        self.population_size = 200
+        self.mutation_probability = 0.05
+        self.population_size = 100
 
         self.construct_population()
 
@@ -91,21 +105,16 @@ class GeneticAlgorithm:
         for structure in self.population:
             structure.evaluate_fitness()
 
-        # for debugging
-        for i in range(len(self.population)):
-            print self.population[i].system_potential_energy()
-
     def construct_population(self):
-        for i in range(2*self.population_size):
+        while len(self.population) < self.population_size:
             self.population.append(Structure(seed=self.rand3.generate()))
-        self.run_natural_selection()
-        self.population = self.population[:self.population_size] # select 100 to begin with
+            self.run_natural_selection()
     
     def run_natural_selection(self):
         self.population = filter(self.filter_out_different_length_structure, self.population)
         
     def filter_out_different_length_structure(self, structure):
-        return len(structure.beads) == 27
+        return len(structure.vector) == 27
 
     def individual_fitness(self, index):
         return self.population[index].system_potential_energy()
@@ -187,7 +196,7 @@ class GeneticAlgorithm:
             if self.rand3.generate() < self.mutation_probability:
                 # run point mutation
                 point = int(self.rand3.generate()*27)
-                A, B, C = child.vector[:point], str(int(self.rand3.generate()*6)), child.vector[:point+1]
+                A, B, C = child.vector[:point], str(int(self.rand3.generate()*6)), child.vector[point+1:]
                 child.vector = A + B + C
         return children
                 
@@ -214,16 +223,19 @@ class GeneticAlgorithm:
                 second_best = j
         return second_best
 
+    def print_population(self):
+        print "CURRENT POPULATION STRINGS"
+        for i in range(len(self.population)):
+            print str(self.population[i])
     
     def run(self):
         old_fitness_score, new_fitness_score = 0, 100
-        while abs(old_fitness_score - new_fitness_score) > 0.01:
-
+        #while abs(old_fitness_score - new_fitness_score) > 0.01:
+        while True==True:
             old_fitness_score = new_fitness_score
-            
-            # initialize new population        
+
+            # initialize new population and set up other variables for later use in loop
             new_population = []
-            
             (worst, best) = self.find_worst_and_best_indices()
             biggest_energy_difference = abs(self.individual_fitness(worst) - self.individual_fitness(best))
             total_fitness = self.population_total_fitness()
@@ -233,26 +245,49 @@ class GeneticAlgorithm:
             new_population.append(self.population[self.find_second_best_index()])
             
             while len(new_population) < len(self.population):
+                print "new pop length: "+str(len(new_population))
 
-                # select parents based on fitness scores
+                # select parents based on their fitness scores
                 (j, k) = self.select_two_parents(best, biggest_energy_difference, total_fitness)
 
-                # with probability, create children
-                children = self.apply_crossover_and_create_children(j, k)
+                #print "begin:\t\t" + self.population[j].vector + " " + self.population[k].vector
 
-                # with probability, mutate them
+                # with crossover_probability, create children
+                children = self.apply_crossover_and_create_children(j, k)
+                # print "children:\t" + children[0].vector + " " + children[1].vector
+
+                # with mutation_probability, mutate them
                 children = self.apply_mutation(children)
+                # print "children:\t" + children[0].vector + " " + children[1].vector
 
                 # regrow chain, helps determine which children are viable
                 for child in children:
                     child.regenerate_lattice_from_vector()
 
-                # filter chilren for viability (ex. structures have overlapping beads, etc)
+                
+                for child in children:
+                    print "children okay1 " + str(child)
+                print "\n"
+                
+
+                # filter chilren for "viability" (ex. structures have overlapping beads, structure is stuck and cannot grow fully, etc)
                 children = filter(self.filter_out_different_length_structure, children)
+
+                '''
+                for child in children:
+                    print "children okay2 " + str(child)
+                print "\n"
+                '''
 
                 # place children in new population
                 new_population.extend(children)
 
+            '''
+            print "NEW_POP"
+            for i in range(len(new_population)):
+                print str(new_population[i])
+            '''
+            
             # ensures we get new population of same size
             self.population = new_population[:self.population_size]
 
@@ -261,25 +296,22 @@ class GeneticAlgorithm:
                 structure.evaluate_fitness()
 
             new_fitness_score = self.population_average_fitness()
-            #print self.population[0].system_potential_energy()
-            # for debugging
-            print 'running'
-            print self.individual_fitness(best)
-            #for i in range(len(self.population)):
-             #   print self.population[i].system_potential_energy()
 
+            
+            #print self.population[0].system_potential_energy()
+            print 'running' + str(self.individual_fitness(best))
+            #for i in range(len(self.population)):
+            #    print self.population[i].system_potential_energy()
+            
 
 ###########################
 # RUN CODE
-a=GeneticAlgorithm()
-a.run()
-'''
-f = open('hw4.4.results','w')
+
+#f = open('hw4.4.results','w')
 seed = Ran3(1249834071)
 
-for i in range(3):
-    a = GeneticAlgorithm(r_seed=int(1E12*seed.generate()))
-    a.run()
-    print >>f, "File = " + 'protein_lattice_config_1.txt' + "; Genetic Algorithm; Run #" + str(i+1) + "; Global Minimum PE = " + str(a.system_potential_energy())
-f.close()
-'''
+#for i in range(3):
+a = GeneticAlgorithm(r_seed=int(1E12*seed.generate()))
+a.run()
+#    print >>f, "File = " + 'protein_lattice_config_1.txt' + "; Genetic Algorithm; Run #" + str(i+1) + "; Global Minimum PE = " + str(a.system_potential_energy())
+#f.close()
