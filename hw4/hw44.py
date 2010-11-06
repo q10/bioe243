@@ -1,5 +1,6 @@
 from math import exp, sqrt
 from common import Ran3, AABead, Lattice
+from copy import deepcopy
 
 # default parameters
 SEED = 845340327839343
@@ -91,13 +92,14 @@ class Structure(Lattice):
 
 # define optimization algorithm
 class GeneticAlgorithm:
-    def __init__(self, filename='protein_lattice_config_1.txt', temp=INIT_TEMP, r_seed=SEED):
+    def __init__(self, filename='protein_lattice_config_1.txt', temp=INIT_TEMP, r_seed=SEED, population=100, run_times=10000):
         self.population = []
         
         self.rand3 = Ran3(r_seed)
         self.crossover_probability = 0.5
-        self.mutation_probability = 0.05
-        self.population_size = 100
+        self.mutation_probability = 0.1
+        self.population_size = population
+        self.run_times=run_times
 
         self.construct_population()
 
@@ -131,12 +133,16 @@ class GeneticAlgorithm:
     def single_crossover(self, index_j, index_k):
         v1, v2 = self.population[index_j].vector, self.population[index_k].vector
         (v1, v2) = self.single_crossover_string(v1, v2)
-        self.population[index_j].vector, self.population[index_k].vector = v1, v2
+        child1, child2 = deepcopy(self.population[index_j]), deepcopy(self.population[index_k])
+        child1.vector, child2.vector = v1, v2
+        return [child1, child2]
 
     def double_crossover(self, index_j, index_k):
         v1, v2 = self.population[index_j].vector, self.population[index_k].vector
         (v1, v2) = self.double_crossover_string(v1, v2)
-        self.population[index_j].vector, self.population[index_k].vector = v1, v2
+        child1, child2 = deepcopy(self.population[index_j]), deepcopy(self.population[index_k])
+        child1.vector, child2.vector = v1, v2
+        return [child1, child2]
 
     def single_crossover_string(self, v1, v2):
         i = int(self.rand3.generate()*27)
@@ -182,14 +188,17 @@ class GeneticAlgorithm:
         return (int(self.rand3.generate()*len(self.population)), int(self.rand3.generate()*len(self.population)))
         '''
     def apply_crossover_and_create_children(self, index_j, index_k):
+        children = []
         if self.rand3.generate() < self.crossover_probability:
             if self.rand3.generate() < 0.7:
-                self.single_crossover(index_j, index_k)
+                children = self.single_crossover(index_j, index_k)
             else:
-                self.double_crossover(index_j, index_k)
-        # the above methds crosses over the vectors only; no need to create new objects
-        # in either case, we return both structures back, crossed or not
-        return [self.population[index_j], self.population[index_k]]
+                children = self.double_crossover(index_j, index_k)
+        else:
+            # else return parents as members of the new population
+            # deepcopy is an imported function that creates a copy of an object in memory
+            children = [deepcopy(self.population[index_j]), deepcopy(self.population[index_k])]
+        return children
     
     def apply_mutation(self, children):
         for child in children:
@@ -219,7 +228,7 @@ class GeneticAlgorithm:
         second_best = 0
         for j in range(1, len(self.population)):
             tmp = self.individual_fitness(j)
-            if tmp < self.individual_fitness(second_best) and tmp != best:
+            if tmp < self.individual_fitness(second_best) and j != best:
                 second_best = j
         return second_best
 
@@ -229,11 +238,7 @@ class GeneticAlgorithm:
             print str(self.population[i])
     
     def run(self):
-        old_fitness_score, new_fitness_score = 0, 100
-        #while abs(old_fitness_score - new_fitness_score) > 0.01:
-        while True==True:
-            old_fitness_score = new_fitness_score
-
+        for t in range(self.run_times):
             # initialize new population and set up other variables for later use in loop
             new_population = []
             (worst, best) = self.find_worst_and_best_indices()
@@ -245,7 +250,7 @@ class GeneticAlgorithm:
             new_population.append(self.population[self.find_second_best_index()])
             
             while len(new_population) < len(self.population):
-                print "new pop length: "+str(len(new_population))
+                '''print "new pop length: "+str(len(new_population))'''
 
                 # select parents based on their fitness scores
                 (j, k) = self.select_two_parents(best, biggest_energy_difference, total_fitness)
@@ -264,11 +269,11 @@ class GeneticAlgorithm:
                 for child in children:
                     child.regenerate_lattice_from_vector()
 
-                
+                '''
                 for child in children:
                     print "children okay1 " + str(child)
                 print "\n"
-                
+                '''
 
                 # filter chilren for "viability" (ex. structures have overlapping beads, structure is stuck and cannot grow fully, etc)
                 children = filter(self.filter_out_different_length_structure, children)
@@ -295,23 +300,27 @@ class GeneticAlgorithm:
             for structure in self.population:
                 structure.evaluate_fitness()
 
-            new_fitness_score = self.population_average_fitness()
-
-            
-            #print self.population[0].system_potential_energy()
+            '''
+            print self.population[0].system_potential_energy()
+            (worst, best) = self.find_worst_and_best_indices()
             print 'running' + str(self.individual_fitness(best))
-            #for i in range(len(self.population)):
-            #    print self.population[i].system_potential_energy()
-            
+            for i in range(len(self.population)):
+                print self.population[i].system_potential_energy()
+            '''
 
 ###########################
 # RUN CODE
 
-#f = open('hw4.4.results','w')
+f = open('hw4.4.results','w')
 seed = Ran3(1249834071)
 
-#for i in range(3):
-a = GeneticAlgorithm(r_seed=int(1E12*seed.generate()))
-a.run()
-#    print >>f, "File = " + 'protein_lattice_config_1.txt' + "; Genetic Algorithm; Run #" + str(i+1) + "; Global Minimum PE = " + str(a.system_potential_energy())
-#f.close()
+for w in range(3):
+    a = GeneticAlgorithm(r_seed=int(1E12*seed.generate()), population=200*(w+1), run_times=5000*(w+1))
+    a.run()
+    (worst, best) = a.find_worst_and_best_indices()
+    print >>f, "File = " + 'protein_lattice_config_1.txt' + "; Genetic Algorithm\nRun #" + str(w+1) + \
+          "\nPopulation Size = " + str(len(a.population)) + \
+          "\nGenerations Iterated = " + str(a.run_times) + \
+          "\nAverage Fitness (PE) of Solution Population = " + str(a.population_average_fitness()) + \
+          "\nBest Global Minimum PE = " + str(a.individual_fitness(best)) + "\n\n"
+f.close()
