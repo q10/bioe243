@@ -311,11 +311,11 @@ class GeneticAlgorithm:
 ###########################
 # RUN CODE
 
-f = open('hw4.4.results','w')
+f = open('hw4.4.results2','w')
 seed = Ran3(1249834071)
 
 for w in range(3):
-    a = GeneticAlgorithm(r_seed=int(1E12*seed.generate()), population=200*(w+1), run_times=5000*(w+1))
+    a = GeneticAlgorithm(r_seed=int(1E12*seed.generate()), population=200*(w+1), run_times=500)
     a.run()
     (worst, best) = a.find_worst_and_best_indices()
     print >>f, "File = " + 'protein_lattice_config_1.txt' + "; Genetic Algorithm\nRun #" + str(w+1) + \
