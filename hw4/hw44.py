@@ -311,7 +311,7 @@ class GeneticAlgorithm:
 ###########################
 # RUN CODE
 
-f = open('hw4.4.results2','w')
+f = open('hw4.4.results','w')
 seed = Ran3(1249834071)
 
 for w in range(3):
