@@ -2,13 +2,6 @@
 //      BE243
 //      Stuart Howes <showes@berkeley.edu>
 
-/*
-rho* = rho/(m*sigma^3)
-
-silver density = 1.537
-
-*/
-
 #include <iostream>
 #include <valarray>
 #include <fstream>
@@ -24,7 +17,7 @@ silver density = 1.537
 #include <cmath>
 #include <string>
 
-//using namespace std;
+using namespace std;
 
 
 long MBIG = 1000000000;
@@ -95,23 +88,25 @@ float BoxMueller() {
   }
 }
 
+float density = 0.004511;		            // Density of fluid
 float force [108][3];				// Forces on each particle
 float position [108][3];			// Position of current configuration of particles
 float PositionAtTimeZero [108][3];			
-float BestConfiguration [108][3];		// Position of best configurations of particles
+float AllPositions [1080][3];		// Position of all configurations of particles
 float velocity [108][3];			// Velocities for all the particles in the current configuration
 float velocityHalf [108][3];
 float velocityNew [108][3];
 float rho_all[108];
+float SetpointTemp = 45; 
 float Vfinal = 0;
 int N = 108;						// Number of particles for each configuration
-float tau = 10;                  // Parameter used with Bussi Thermostat, equilibration time
+float tau = 0.001;                  // Parameter used with Bussi Thermostat, equilibration time
 
 // PARTICLE PROPERTIES
-float silver_e=2.5415E-3, silver_a=4.09, silver_n=12, silver_m=6, silver_c=144.41, silver_density=1.53702761, silver_temperature=45.77;
-float gold_e=1.2793E-2, gold_a=4.08, gold_n=10, gold_m=8, gold_c=34.41, gold_density=0.92929022, gold_temperature=9.093;
+float silver_e=2.5415E-3, silver_a=4.09, silver_n=12, silver_m=6, silver_c=144.41;
+float gold_e=1.2793E-2, gold_a=4.08, gold_n=10, gold_m=8, gold_c=34.41;
 
-void GetInitPositionsAndInitVelocities(float SetpointTemp){
+int GetInitPositionsAndInitVelocities(){
 	FILE * filePosition;
 	//~ FILE * fileVelocity;
 	float xi, yi, zi, Vx, Vy, Vz;
@@ -119,7 +114,7 @@ void GetInitPositionsAndInitVelocities(float SetpointTemp){
 	
 	filePosition = fopen("LJ_108_1.txt", "r");
 	if (filePosition == NULL) {
-		std::cout << "Unable to open LJ_108_1.txt";
+		cout << "Unable to open LJ_108_1.txt";
 		exit(1); // terminate with error
 	}
 	fpos_t pos;
@@ -133,11 +128,6 @@ void GetInitPositionsAndInitVelocities(float SetpointTemp){
 			PositionAtTimeZero[i][0] = xi;
 			PositionAtTimeZero[i][1] = yi;
 			PositionAtTimeZero[i][2] = zi;
-
-			// save copy for best configuration
-			BestConfiguration[i][0] = xi;
-			BestConfiguration[i][1] = yi;
-			BestConfiguration[i][2] = zi;
 			
 			i++;	
 			fgetpos (filePosition, &pos);
@@ -220,6 +210,8 @@ void GetInitPositionsAndInitVelocities(float SetpointTemp){
         
         //~ printf ("Gaussian values: g1 = %f, g2 = %f, g3 = %f, g4 = %f, g5 = %f and g6 = %f\n", g1, g2, g3, g4, g5, g6);
         
+        // Debug...remove temp set
+        SetpointTemp = 10;
         float k = sqrt (SetpointTemp);									// Generate actual velocities
             Vx = k * g1;
             Vy = k * g2;
@@ -258,7 +250,7 @@ float GetRho(int particle_num, float box, float a, float c, float m) {
 }
 
 // THE NEW FORCE AND ENERGY FUNCTIONS
-void CalcForces(float box, float rcut, float a, float c, float m, float n){
+float CalcForces(float box, float rcut, float a, float c, float m, float n){
 	//Variables to calculate
         float r2 = 0, r6 = 0, r12  = 0, rcut2, Vcalc = 0, Vcorrection = 0, tmp_f, a_r = 0;
     
@@ -270,11 +262,11 @@ void CalcForces(float box, float rcut, float a, float c, float m, float n){
 			}
 			rho_all[i] = GetRho(i, box, a, c, m);
 		}
-			
+	
 		for (int i = 0; i < N; i++){
-		  for (int j = 0; j < N; j++){
-			if (j != i){
-		                float deltaX = (position[i][0] - position[j][0]);
+			for (int j = 0; j < N; j++){
+            if (j != i){
+				float deltaX = (position[i][0] - position[j][0]);
 				float deltaY = (position[i][1] - position[j][1]);
 				float deltaZ = (position[i][2] - position[j][2]);
 				
@@ -302,16 +294,9 @@ void CalcForces(float box, float rcut, float a, float c, float m, float n){
 				  force[j][2] -= deltaZ * tmp_f;
 				}
 			}
-		  }
-		  Vcalc = 0.5*Vcalc - c * sqrt(rho_all[i]) ;
-		}
-
-		for (int i = 0; i < N; i++){
-		  for (int j = 0; j < 3; j++){
-		    force[i][j] /= 2.0;
-		  }
-		}
-		
+            }
+			Vcalc = 0.5*Vcalc - c * sqrt(rho_all[i]) ;
+        }
 		
 		//~ float rcut3 = rcut * rcut * rcut;
 		//~ float rcut9 = rcut3 * rcut3 * rcut3;
@@ -323,7 +308,7 @@ void CalcForces(float box, float rcut, float a, float c, float m, float n){
         
 }
 
-void VelocityVerlet(float deltaT, float box, float rcut, float a, float c, float m, float n){	
+float VelocityVerlet(float deltaT, float box, float rcut, float a, float c, float m, float n){	
 	float deltaT2 = deltaT * deltaT;
 		
 	for (int i = 0; i < N; i++){
@@ -360,7 +345,7 @@ float GetKineticEnergy() {
   return KineticEnergy;
 }
 
-void BussiThermostat(float deltaT, float CurrentTemp, float SetpointTemp) {
+float BussiThermostat(float deltaT, float CurrentTemp) {
   /* Berendsen Thermostat
   // deltaT is the time step size
   float tau = 1.0;
@@ -374,7 +359,6 @@ void BussiThermostat(float deltaT, float CurrentTemp, float SetpointTemp) {
   
   float cc = exp(-deltaT/tau);
   float d = (1-cc)*(SetpointTemp/CurrentTemp)/(N+1);
-  std::cout << "d = " << d << std::endl;
   float r = BoxMueller();
   float s = 0;
   
@@ -383,11 +367,10 @@ void BussiThermostat(float deltaT, float CurrentTemp, float SetpointTemp) {
     float si = BoxMueller();
     s += si*si;
   }
-  float scale = sqrt( cc + ((s+r*r)*d) + 2.0*r*sqrt(cc*d) );
+  float scale = sqrt( cc+(s+r*r)*d + 2.0*r*sqrt(cc*d) );
   if (r + sqrt(cc/d) < 0.0)
     scale = -scale;
- 
-  std::cout << "scale = " << scale << std::endl;
+
   // rescale velocities
   for (int i = 0; i < N; i++){	 
     for (int j = 0; j < 3; j++){
@@ -413,7 +396,7 @@ float CalculateDiffusitivity(float deltaT, float step) {
 int main(int argc, char** argv){
 
   // declare metal properties
-  float m, a, n, c, density, SetpointTemperature;
+  float m, a, n, c;
   
   // check for second argument, and initialize metal properties accordingly
   if (argc < 2) {
@@ -425,16 +408,13 @@ int main(int argc, char** argv){
     a = gold_a;
     n = gold_n;
     c = gold_c;
-    density = gold_density;
-    SetpointTemperature = gold_temperature;
   }
   else if (strcmp(argv[1],"silver") == 0) {
     m = silver_m;
     a = silver_a;
     n = silver_n;
     c = silver_c;
-    density = silver_density;
-    SetpointTemperature = silver_temperature;
+
   }
   else {
     std::cout << "Argument must be \'gold\' or \'silver\'\n\n";
@@ -442,91 +422,57 @@ int main(int argc, char** argv){
   }
 
         // declaring variables
-        int timestart = time (NULL), timend, steps = 10;		                             // Number of time steps to take
-		float KineticEnergy = 0, CurrentTemperature, TotalEnergy, timeEvolved, deltaT = 0.001;     // Size of time step
+        int timestart = time (NULL), timend, steps = 10000;		                             // Number of time steps to take
+		float KineticEnergy = 0, Temperature, TotalEnergy, timeEvolved, deltaT = 0.0001;     // Size of time step
 		float b = pow(abs(N/density) , (1.0/3.0));
         float rc = b/2;
-	float BestV = 0;
-
         
         printf("Box length = %f.\n", b);
         
 		FILE * fileVelocityVerlet;
 	 	fileVelocityVerlet = fopen("Results.txt", "w");
 		if (fileVelocityVerlet == NULL) {
-		  std::cout << "Unable to open VelocityVerlet.txt" << std::endl;
-		  exit(1); // terminate with error
-		}
-
-		FILE * fileBestConfig;
-	 	fileBestConfig = fopen("BestConfig.txt", "w");
-		if (fileBestConfig == NULL) {
-		  std::cout << "Unable to open BestConfig.txt" << std::endl;
+		  cout << "Unable to open VelocityVerlet.txt" << endl;
 		  exit(1); // terminate with error
 		}
 
 		// Initialize positions and forces
-		GetInitPositionsAndInitVelocities(SetpointTemperature);
+		GetInitPositionsAndInitVelocities();
 		CalcForces(b, rc, a, c, m, n);
 
         // tau = 
         
-		// Calculate initial kinetic and total energy and temperature
+		// Calculate initial kinetic and total energy
 		KineticEnergy = GetKineticEnergy();									
 		TotalEnergy = KineticEnergy + Vfinal;
-		CurrentTemperature = (2 * KineticEnergy)/(3 * N - 3);
+		Temperature = (2 * KineticEnergy)/(3 * N - 3);
 
-		std::cout << "Starting Temperature = " << CurrentTemperature << std::endl;
+		cout << "Starting Temperature = " << Temperature << endl;
 		fprintf (fileVelocityVerlet, "Time, Total Energy, PotentialE(V), KineticE \n", TotalEnergy, Vfinal, KineticEnergy);	// Print starting values
-		fprintf (fileVelocityVerlet, "0, %f, %f, %f\n", TotalEnergy, Vfinal, KineticEnergy);	// Print starting values
+        fprintf (fileVelocityVerlet, "0, %f, %f, %f\n", TotalEnergy, Vfinal, KineticEnergy);	// Print starting values
 		
 		for (int i = 0; i < steps; i++){
 		        // Update position and velocity
 			VelocityVerlet(deltaT, b, rc, a, c, m, n);						
-
-			// Get Kinetic Energy
-			KineticEnergy = GetKineticEnergy();
-			// std::cout << Vfinal << std::endl;
-			for (int v = 0; v < 1; v++) {
-			  std::cout << velocity[v][0] << ", " << velocity[v][1] << ", "<< velocity[v][2] << std::endl;
-			    
-			  }
-			CurrentTemperature = (2 * KineticEnergy)/(3 * N - 3);      // Calculate temperature
+                // Get Kinetic Energy
+            KineticEnergy = GetKineticEnergy();
+            Temperature = (2 * KineticEnergy)/(3 * N - 3);      // Calculate temperature
+            BussiThermostat(deltaT, Temperature);               // Control temperature
 			TotalEnergy = KineticEnergy + Vfinal;
-
-			std::cout<< "ct = " << CurrentTemperature << "spt = " << SetpointTemperature << std::endl;
-			BussiThermostat(deltaT, CurrentTemperature, SetpointTemperature);               // Control temperature
-
 			timeEvolved = i * deltaT;
             
-			//~ printf ("t, TE, V, KE: %f, %f, %f, %f\n", timeEvolved, TotalEnergy, Vfinal, KineticEnergy);
+            //~ printf ("t, TE, V, KE: %f, %f, %f, %f\n", timeEvolved, TotalEnergy, Vfinal, KineticEnergy);
 			fprintf (fileVelocityVerlet, "%f, %f, %f, %f\n", timeEvolved, TotalEnergy, Vfinal, KineticEnergy);
-			if (Vfinal < BestV){
-			  BestV = Vfinal;
-			  for (int v = 0; v < N; v++) {
-			    for (int w = 0; w < 3; w++) {
-			      BestConfiguration[v][w] = position[v][w];
-			    }
-			  }
-			}
 		}
 		
-		CurrentTemperature = (2 * KineticEnergy)/(3 * N - 3);
-		std::cout << "Final Temperature = " << CurrentTemperature << std::endl
-		     << "Kinetic Energy = " << KineticEnergy << std::endl
-		     << "Binding Energy = " << TotalEnergy / N << std::endl
-		     << "Diffusitivity = " << CalculateDiffusitivity(deltaT, steps) << std::endl;
-
-		fprintf (fileBestConfig, "Best Configuration:\n");
-		for (int i = 0; i < N; i++) {
-		  fprintf (fileBestConfig, "%f, %f, %f\n", BestConfiguration[i][0], BestConfiguration[i][1], BestConfiguration[i][2]);
-		}
+		Temperature = (2 * KineticEnergy)/(3 * N - 3);
+		cout << "Final Temperature = " << Temperature << endl
+		     << "Kinetic Energy = " << velocity[0][0] << endl
+		     << "Binding Energy = " << TotalEnergy / N << endl
+		     << "Diffusitivity = " << CalculateDiffusitivity(deltaT, steps) << endl;
 		
-		fclose (fileBestConfig);
-		fclose (fileVelocityVerlet);
-
 	timend = time (NULL);
-	std::cout << (timend-timestart) << " seconds to execute." << std::endl;
+	cout << (timend-timestart) << " seconds to execute." << endl;
 	
 	//terminate the program
 	return 0;
