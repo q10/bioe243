@@ -280,7 +280,7 @@ print >>f, "Potential Energy = " + str(a.system_potential_energy) + "\n" + \
       "Global Potential Energy Minimum = " + str(a.best_potential_energy) + "\n" + \
       "Binding Energy at Global Minimum = " + str(a.best_total_energy/a.N) + "\n"
 
-print "Global Minimum configuration:"
+print >>f, "Global Minimum configuration:"
 for p in a.best_config:
     print >>f, str(p)
 f.close()
@@ -302,7 +302,7 @@ print >>f, "Potential Energy = " + str(a.system_potential_energy) + "\n" + \
       "Global Potential Energy Minimum = " + str(a.best_potential_energy) + "\n" + \
       "Binding Energy at Global Minimum = " + str(a.best_total_energy/a.N) + "\n"
 
-print "Global Minimum configuration:"
+print >>f, "Global Minimum configuration:"
 for p in a.best_config:
     print >>f, str(p)
 f.close()
