@@ -442,7 +442,7 @@ int main(int argc, char** argv){
   }
 
         // declaring variables
-        int timestart = time (NULL), timend, steps = 1000;		                             // Number of time steps to take
+        int timestart = time (NULL), timend, steps = 50000;		                             // Number of time steps to take
 		float KineticEnergy = 0, CurrentTemperature, TotalEnergy, timeEvolved, deltaT = 0.001;     // Size of time step
 		float b = pow(abs(N/density) , (1.0/3.0));
         float rc = b/2;
