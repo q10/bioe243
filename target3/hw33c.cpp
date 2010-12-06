@@ -429,7 +429,7 @@ int main(int argc, char** argv){
   }
 
   // declaring variables
-  int timestart = time (NULL), timend, steps = 500;		                             // Number of time steps to take
+  int timestart = time (NULL), timend, steps = 50000;		                             // Number of time steps to take
   float timeEvolved, deltaT = 0.001;     // Size of time step
   float b = pow(abs(N/density) , (1.0/3.0));
   float rc = b/2;
@@ -527,7 +527,7 @@ int main(int argc, char** argv){
 
   int BEST = get_best_global_config();
   
-  current_temperature[0] = (2 * kinetic_energy[0])/(3 * N - 3);
+  current_temperature[0] = (2 * kinetic_energy[0])/((3 * N) - 6);
   fprintf (fileResults, "Final Temperature = %f\n", current_temperature[0]);
   fprintf (fileResults, "Potential Energy = %f\n", potential_energy[0]);
   fprintf (fileResults, "Kinetic Energy = %f\n", kinetic_energy[0]);
