@@ -40,11 +40,9 @@ float RAN3() {
 	static int iff=0;
 	long mj,mk;
 	int i,ii,k;
-	// cout << *idum;
 	if (idum < 0 || iff == 0) {
 		iff=1;
 		mj = MSEED-(idum < 0 ? -idum : idum);
-		//~ cout << "mj = " << mj << endl;
 		mj = mj % MBIG;
 		ma[55]=mj;
 		mk=1;
@@ -103,21 +101,21 @@ float BoxMueller() {
 }
 
 
-float force [30][108][3];				// Forces on each particle
-float position [30][108][3];			// Position of current configuration of particles
+float force [14][108][3];				// Forces on each particle
+float position [14][108][3];			// Position of current configuration of particles
 float PositionAtTimeZero [108][3];			
-float best_configuration [30][108][3];		// Position of best configurations of particles
-float best_v [30];
-float best_k [30];
-float velocity [30][108][3];			// Velocities for all the particles in the current configuration
-float rho_all [30][108];
-float potential_energy [30];
-float kinetic_energy [30];
-float total_energy [30];
-float current_temperature [30];
-float setpoint_temperature [30];
+float best_configuration [14][108][3];		// Position of best configurations of particles
+float best_v [14];
+float best_k [14];
+float velocity [14][108][3];			// Velocities for all the particles in the current configuration
+float rho_all [14][108];
+float potential_energy [14];
+float kinetic_energy [14];
+float total_energy [14];
+float current_temperature [14];
+float setpoint_temperature [14];
 
-float num_replicas = 30;
+float num_replicas = 14;
 int N = 108;						// Number of particles for each configuration
 float tau = 0.0001;                  // Parameter used with Bussi Thermostat, equilibration time
 
@@ -149,6 +147,12 @@ void GetInitPositionsAndInitVelocities () {
 			best_configuration[h][i][0] = xi;
 			best_configuration[h][i][1] = yi;
 			best_configuration[h][i][2] = zi;
+
+			float k = 1.0;
+			//float k = sqrt (setpoint_temperature[h]);
+			velocity[h][i][0] = k * BoxMueller();
+			velocity[h][i][1] = k * BoxMueller();
+			velocity[h][i][2] = k * BoxMueller();
 		}
 
                 // save copy for diffusitivity calculation later
@@ -163,16 +167,6 @@ void GetInitPositionsAndInitVelocities () {
 		else break;
         }
 	fclose (filePosition);
-
-	// Generate new velocities instead of reading in the old ones which were generated at a different temp.
-	// This uses actual simulation temperature
-
-	for (int h=0; h<num_replicas; h++) {
-	  float k = sqrt (setpoint_temperature[h]);
-	  velocity[h][i][0] = k * BoxMueller();
-	  velocity[h][i][1] = k * BoxMueller();
-	  velocity[h][i][2] = k * BoxMueller();
-	}
 }
 
 
@@ -234,8 +228,7 @@ void CalcForces(float box, float rcut, float a, float c, float m, float n){
 	    // Do calculation
 	    a_r = a / sqrt(r2);
 	    Vcalc += pow(a_r, n);
-				  
-	    // Reduced units, no e needed?
+	    
 	    tmp_f = ( n*pow(a_r, n) - (c/2.0)*m*(pow(rho_all[h][i],-0.5) + pow(rho_all[h][j],-0.5))*pow(a_r, m) ) / r2;
 
 	    force[h][i][0] += deltaX * tmp_f;
@@ -268,9 +261,9 @@ void VelocityVerlet(float deltaT, float box, float rcut, float a, float c, float
   for (int h=0; h<num_replicas; h++) {
     for (int i = 0; i < N; i++){
       // Update position
-      position[h][i][0] = position[h][i][0] + velocity[h][i][0]*deltaT + (1.0/2.0)*force[h][i][0]*deltaT2;
-      position[h][i][1] = position[h][i][1] + velocity[h][i][1]*deltaT + (1.0/2.0)*force[h][i][1]*deltaT2;
-      position[h][i][2] = position[h][i][2] + velocity[h][i][2]*deltaT + (1.0/2.0)*force[h][i][2]*deltaT2;
+      position[h][i][0] += velocity[h][i][0]*deltaT + (1.0/2.0)*force[h][i][0]*deltaT2;
+      position[h][i][1] += velocity[h][i][1]*deltaT + (1.0/2.0)*force[h][i][1]*deltaT2;
+      position[h][i][2] += velocity[h][i][2]*deltaT + (1.0/2.0)*force[h][i][2]*deltaT2;
       
       // Update velocity at half step
       velocity[h][i][0] += force[h][i][0]*deltaT/2.0;
@@ -281,7 +274,7 @@ void VelocityVerlet(float deltaT, float box, float rcut, float a, float c, float
   }
   // New forces based on new positions
   CalcForces(box, rcut, a, c, m, n);	// Updates array of forces from F(t) to F(t + deltaT)
-		
+  
   // Update velocity at full step with new forces
   for (int h=0; h<num_replicas; h++) {
     for (int i = 0; i < N; i++){
@@ -290,7 +283,6 @@ void VelocityVerlet(float deltaT, float box, float rcut, float a, float c, float
       velocity[h][i][2] += force[h][i][2]*deltaT/2.0;
     }
   }
-  
 }
 
 float GetKineticEnergy(int h) {
@@ -387,9 +379,22 @@ void save_best_config () {
 }
 
 void setup_temperatures () {
-
+  float temp_step = 0.3;
+  float temperature = setpoint_temperature[0] - (temp_step*(num_replicas-2)/2.0);
+  for (int h=1; h<num_replicas; h++) {
+    setpoint_temperature[h] = temperature;
+    temperature += temp_step;
+  }
 }
 
+int get_best_global_config() {
+  int best = 0;
+  for (int h=0; h<num_replicas; h++) {
+    if (best_v[h] < best_v[best])
+      best = h;
+  }
+  return best;
+}
 
 
 int main(int argc, char** argv){
@@ -398,7 +403,7 @@ int main(int argc, char** argv){
   float m, a, n, c, density;
   
   // check for second and third arguments, and initialize metal properties accordingly
-  if (argc < 3) {
+  if (argc < 2) {
     std::cout << "Program must be invoked with argument \'gold\' or \'silver\'\n\n";
     return -1; // terminate with error
   }
@@ -424,11 +429,11 @@ int main(int argc, char** argv){
   }
 
   // declaring variables
-  int timestart = time (NULL), timend, steps = 50000;		                             // Number of time steps to take
+  int timestart = time (NULL), timend, steps = 500;		                             // Number of time steps to take
   float timeEvolved, deltaT = 0.001;     // Size of time step
   float b = pow(abs(N/density) , (1.0/3.0));
   float rc = b/2;
-       
+  
   // open files for write
   FILE * fileData;
   fileData = fopen("Results.txt", "w");
@@ -465,6 +470,7 @@ int main(int argc, char** argv){
   
   for (int i = 0; i < steps; i++){
 
+    // keep the 0th config for MD, use the 1st to last configs as replicas
     if (RAN3() < 0.5) {
       int p = RANDINT(1, num_replicas);
       int q = p;
@@ -500,13 +506,13 @@ int main(int argc, char** argv){
       }
     }
     
-    // Update position and velocity
-    VelocityVerlet(deltaT, b, rc, a, c, m, n);						
-    
+    // Update position, force, velocity, energy, and temperatures
+    VelocityVerlet(deltaT, b, rc, a, c, m, n);    
     update_energy_and_temperature();
-    
+
+    // Increase and control temperature, but wait until particles have spread equilibrated first
     if (i > 0.3*steps)
-      BussiThermostat(deltaT);               // Increase and control temperature, but wait until particles have spread equilibrated first
+      BussiThermostat(deltaT);               
 
     // save best configuration
     save_best_config();
@@ -515,18 +521,21 @@ int main(int argc, char** argv){
     fprintf (fileData, "%f \t%f \t%f \t%f \t%f\n", timeEvolved, total_energy[0], potential_energy[0], kinetic_energy[0], current_temperature[0]);  
     
   }
+
+  int BEST = get_best_global_config();
   
-  CurrentTemperature = (2 * KineticEnergy)/(3 * N - 3);
-  fprintf (fileResults, "Final Temperature = %f\n", CurrentTemperature);
-  fprintf (fileResults, "Potential Energy = %f\n", potential_energy);
-  fprintf (fileResults, "Kinetic Energy = %f\n", KineticEnergy);
-  fprintf (fileResults, "Binding Energy = %f\n", TotalEnergy / N);
+  current_temperature[0] = (2 * kinetic_energy[0])/(3 * N - 3);
+  fprintf (fileResults, "Final Temperature = %f\n", current_temperature[0]);
+  fprintf (fileResults, "Potential Energy = %f\n", potential_energy[0]);
+  fprintf (fileResults, "Kinetic Energy = %f\n", kinetic_energy[0]);
+  fprintf (fileResults, "Binding Energy = %f\n", total_energy[0] / N);
   fprintf (fileResults, "Diffusitivity = %f\n\n", CalculateDiffusitivity(timeEvolved, b));
-    
-  fprintf (fileResults, "Global Potential Energy Minimnum (V at best config) = %f\n", BestV);
-  fprintf (fileResults, "Kinetic Energy at Global Minimnum = %f\n", BestK);
-  fprintf (fileResults, "Total Energy at Global Minimnum = %f\n", BestV + BestK);
-  fprintf (fileResults, "Binding Energy at Global Minimnum = %f\n\n", (BestV+BestK) / N);
+
+  fprintf (fileResults, "Global Minimum Search Results:\n");
+  fprintf (fileResults, "Global Potential Energy Minimnum (V at best config) = %f\n", best_v[BEST]);
+  fprintf (fileResults, "Kinetic Energy at Global Minimnum = %f\n", best_k[BEST]);
+  fprintf (fileResults, "Total Energy at Global Minimnum = %f\n", best_v[BEST]+best_k[BEST]);
+  fprintf (fileResults, "Binding Energy at Global Minimnum = %f\n\n", (best_v[BEST]+best_k[BEST]) / N);
     
   timend = time (NULL);
   fprintf (fileResults, "%i seconds to execute.", timend-timestart);
@@ -534,7 +543,7 @@ int main(int argc, char** argv){
   fprintf (fileBestConfig, "Best Configuration:\n\n");
   fprintf (fileBestConfig, "x\t\ty\t\tz\n");
   for (int i = 0; i < N; i++) {
-    fprintf (fileBestConfig, "%f \t%f \t%f\n", BestConfiguration[i][0], BestConfiguration[i][1], BestConfiguration[i][2]);
+    fprintf (fileBestConfig, "%f \t%f \t%f\n", best_configuration[BEST][i][0], best_configuration[BEST][i][1], best_configuration[BEST][i][2]);
   }
     
   fclose (fileBestConfig);
@@ -609,3 +618,10 @@ int main(int argc, char** argv){
         //~ printf ("Gaussian values: g1 = %f, g2 = %f, g3 = %f, g4 = %f, g5 = %f and g6 = %f\n", g1, g2, g3, g4, g5, g6);
         */
 
+
+	// Generate new velocities instead of reading in the old ones which were generated at a different temp.
+	// This uses actual simulation temperature
+
+	//for (int h=0; h<num_replicas; h++) {
+	  
+	//}

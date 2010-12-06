@@ -1,14 +1,15 @@
 Box length = 8.887488
-Starting Temperature = 1.025278
-Final Temperature = 46.450459
-Potential Energy = -1836.137695
-Kinetic Energy = 7455.298828
-Binding Energy = 52.029270
-Diffusitivity = 0.540169
+Starting Temperature = 0.898310
+Final Temperature = 46.653503
+Potential Energy = -78306.484375
+Kinetic Energy = 7487.887207
+Binding Energy = -655.727720
+Diffusitivity = 0.455751
 
-Global Potential Energy Minimnum (V at best config) = -1943.111328
-Kinetic Energy at Global Minimnum = 6755.409180
-Total Energy at Global Minimnum = 4812.297852
-Binding Energy at Global Minimnum = 44.558313
+Global Minimum Search Results:
+Global Potential Energy Minimnum (V at best config) = -88362.015625
+Kinetic Energy at Global Minimnum = 6793.153320
+Total Energy at Global Minimnum = -81568.862305
+Binding Energy at Global Minimnum = -755.267244
 
-1252 seconds to execute.
+78 seconds to execute.
