@@ -535,7 +535,7 @@ int main(int argc, char** argv){
   fprintf (fileResults, "Binding Energy ((V+K)/N) = %f\n", total_energy[0] / N);
   fprintf (fileResults, "Diffusitivity = %f\n\n", CalculateDiffusitivity(timeEvolved, b));
 
-  fprintf (fileResults, "Global Minimum Search Results:\n");
+  fprintf (fileResults, "Global Minimum Search Results (found by Replica Exchange MD):\n");
   fprintf (fileResults, "Global Potential Energy Minimnum (V at best config) = %f\n", best_v[BEST]);
   fprintf (fileResults, "Kinetic Energy at Global Minimnum = %f\n", best_k[BEST]);
   fprintf (fileResults, "Total Energy at Global Minimnum = %f\n", best_v[BEST]+best_k[BEST]);
