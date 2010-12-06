@@ -235,9 +235,9 @@ void CalcForces(float box, float rcut, float a, float c, float m, float n){
 	    force[h][i][1] += deltaY * tmp_f;
 	    force[h][i][2] += deltaZ * tmp_f;
 	    // remove double-counting
-	    //force[j][0] -= deltaX * tmp_f;
-	    //force[j][1] -= deltaY * tmp_f;
-	    //force[j][2] -= deltaZ * tmp_f;
+	    //force[h][j][0] -= deltaX * tmp_f;
+	    //force[h][j][1] -= deltaY * tmp_f;
+	    //force[h][j][2] -= deltaZ * tmp_f;
 	  }
 	}
       }
@@ -357,7 +357,7 @@ void update_energy_and_temperature () {
   for (int h=0; h < num_replicas; h++) {
     kinetic_energy[h] = GetKineticEnergy(h);									
     total_energy[h] = kinetic_energy[h] + potential_energy[h];
-    current_temperature[h] = (2 * kinetic_energy[h])/(3 * N - 3);
+    current_temperature[h] = (2 * kinetic_energy[h])/((3 * N) - 6);
   }
 }
 
@@ -461,8 +461,11 @@ int main(int argc, char** argv){
   update_energy_and_temperature();
   
   // print results
+
+  fprintf (fileResults, "NOTE: POTENTIAL ENERGY IS GIVEN BY THE SUTTON-CHEN POTENTIAL.  KINETIC ENERGY IS GIVEN BY THE PARTICLES' VELOCITIES.\n");
   fprintf (fileResults, "Box length = %f\n", b);
   fprintf (fileResults, "Starting Temperature = %f\n", current_temperature[0]);
+  fprintf (fileData, "NOTE: POTENTIAL ENERGY IS GIVEN BY THE SUTTON-CHEN POTENTIAL.  KINETIC ENERGY IS GIVEN BY THE PARTICLES' VELOCITIES.\n");
   fprintf (fileData, "Time \t\tTotal Energy \tPotentialE(V) \tKineticE \tCurrent Temp \n");	// Print headers
   fprintf (fileData, "%f \t%f \t%f \t%f \t%f\n", 0.0, total_energy[0], potential_energy[0], kinetic_energy[0], current_temperature[0]);	// Print starting values
 
@@ -487,7 +490,7 @@ int main(int argc, char** argv){
       if (RAN3() < min(1.0, exp(dBeta*dEnergy))) {
 	float temp;
 
-	// swap configurations
+	// swap configurations (positions, velocities, and forces)
 	for (int y=0; y<N; y++) {
 	  for (int z=0; z<3; z++) {
 	    temp = position[p][y][z];
@@ -528,14 +531,16 @@ int main(int argc, char** argv){
   fprintf (fileResults, "Final Temperature = %f\n", current_temperature[0]);
   fprintf (fileResults, "Potential Energy = %f\n", potential_energy[0]);
   fprintf (fileResults, "Kinetic Energy = %f\n", kinetic_energy[0]);
-  fprintf (fileResults, "Binding Energy = %f\n", total_energy[0] / N);
+  fprintf (fileResults, "Binding Energy (V/N) = %f\n", potential_energy[0] / N);
+  fprintf (fileResults, "Binding Energy ((V+K)/N) = %f\n", total_energy[0] / N);
   fprintf (fileResults, "Diffusitivity = %f\n\n", CalculateDiffusitivity(timeEvolved, b));
 
   fprintf (fileResults, "Global Minimum Search Results:\n");
   fprintf (fileResults, "Global Potential Energy Minimnum (V at best config) = %f\n", best_v[BEST]);
   fprintf (fileResults, "Kinetic Energy at Global Minimnum = %f\n", best_k[BEST]);
   fprintf (fileResults, "Total Energy at Global Minimnum = %f\n", best_v[BEST]+best_k[BEST]);
-  fprintf (fileResults, "Binding Energy at Global Minimnum = %f\n\n", (best_v[BEST]+best_k[BEST]) / N);
+  fprintf (fileResults, "Binding Energy at Global Minimnum (V/N) = %f\n\n", best_v[BEST] / N);
+  fprintf (fileResults, "Binding Energy at Global Minimnum ((V+K)/N) = %f\n\n", (best_v[BEST]+best_k[BEST]) / N);
     
   timend = time (NULL);
   fprintf (fileResults, "%i seconds to execute.", timend-timestart);
@@ -549,9 +554,7 @@ int main(int argc, char** argv){
   fclose (fileBestConfig);
   fclose (fileData);
   fclose (fileResults);
-
   
-
   return 0;
 }
 
