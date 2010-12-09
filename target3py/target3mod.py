@@ -72,9 +72,6 @@ class SCCluster:
             self.n = GOLD_N
             self.m = GOLD_M
             self.c = GOLD_C
-
-        # actually half of the box's boundary
-        self.cube_boundary = ((self.N/self.density)**(1.0/3.0))/2.0
         
         # initialize particles, positions, and velocities
         r_file = open(filename, 'r')
@@ -82,7 +79,7 @@ class SCCluster:
         temp_sqrt = sqrt(self.target_temp)
         while r_line != '':
             r = map(float, r_line.strip().replace(',', ' ').split())
-            tmp = Particle(r[0], r[1], r[2], self.cube_boundary)
+            tmp = Particle(r[0], r[1], r[2])
             tmp.add_velocity(temp_sqrt*self.normal_dist.generate()[0], temp_sqrt*self.normal_dist.generate()[0], temp_sqrt*self.normal_dist.generate()[0])
             self.particles.append(tmp)
             r_line = r_file.readline()
@@ -92,26 +89,18 @@ class SCCluster:
         self.update_forces_and_energies()
         
         self.update_observables()
-
-        # for finding best global minimum energy and associated configuration
-        self.best_config = []
-        for p in self.particles:
-                self.best_config.append(p.position())
-        self.best_potential_energy = self.system_potential_energy
-        self.best_total_energy = 0.0
-        
-
+    
     def update_observables(self):
         self.update_system_kinetic_energy()
         self.current_temperature = (2 * self.system_kinetic_energy) / (3*self.N - 3)
         self.system_total_energy = self.system_potential_energy + self.system_kinetic_energy
         self.average_energy_per_particle = self.system_total_energy / len(self.particles)
-
+    
     def calculate_rho_for_particle(self, i):
         rho = 0.0;
         for j in range(self.N):
             if j != i:
-                (dx, dy, dz) = self.mirror_convention(self.particles[j].x-self.particles[i].x, self.particles[j].y-self.particles[i].y, self.particles[j].z-self.particles[i].z)
+                dx, dy, dz = self.particles[j].x-self.particles[i].x, self.particles[j].y-self.particles[i].y, self.particles[j].z-self.particles[i].z
                 rho += (1 / sqrt((dx**2.0)+(dy**2.0)+(dz**2.0))) ** self.m;
         return rho;
 
@@ -140,23 +129,21 @@ class SCCluster:
         for first in self.particles:
             self.system_kinetic_energy += (first.m*(first.vx**2.0)) + (first.m*(first.vy**2.0)) + (first.m*(first.vz**2.0))
         self.system_kinetic_energy /= 2.0
-
+    
     def update_forces_and_energies(self):
         self.system_potential_energy = 0.0
         
 	# Clear forces from previous calculations
 	# Use the same loop to calculate rho's for each and all particles
         for i in range(self.N):
-            self.particles[i].fx = 0.0
-            self.particles[i].fy = 0.0
-            self.particles[i].fz = 0.0
+            self.particles[i].fx, self.particles[i].fy, self.particles[i].fz = 0.0, 0.0, 0.0
             self.particles[i].rho = self.calculate_rho_for_particle(i)
 
         # calculate forces and energies	
         for i in range(self.N):
             for j in range(self.N):
                 if j != i:
-                    (dx, dy, dz) = self.mirror_convention(self.particles[j].x-self.particles[i].x, self.particles[j].y-self.particles[i].y, self.particles[j].z-self.particles[i].z)
+                    dx, dy, dz = self.particles[j].x-self.particles[i].x, self.particles[j].y-self.particles[i].y, self.particles[j].z-self.particles[i].z
                     r2 = (dx**2.0)+(dy**2.0)+(dz**2.0)
 		
 		    # Do calculation
@@ -168,25 +155,9 @@ class SCCluster:
                     self.particles[i].fy += dy * tmp_f
                     self.particles[i].fz += dz * tmp_f
 
-            self.system_potential_energy /= 2
-            self.system_potential_energy -= self.c * sqrt(self.particles[i].rho)
-
-    # Enforce mirror image convention
-    def mirror_convention(self, dx, dy, dz):
-        if dx < -self.cube_boundary:
-            dx %= self.cube_boundary
-        if dx > self.cube_boundary:
-            dx %= -self.cube_boundary
-        if dy < -self.cube_boundary:
-            dy %= self.cube_boundary
-        if dy > self.cube_boundary:
-            dy %= -self.cube_boundary
-        if dz < -self.cube_boundary:
-            dz %= self.cube_boundary
-        if dz > self.cube_boundary:
-            dz %= -self.cube_boundary
-        return (dx, dy, dz)
-
+            #self.system_potential_energy /= 2
+            #self.system_potential_energy -= self.c * sqrt(self.particles[i].rho)
+    '''
     def calculate_diffusitivity(self):
         diffusitivity = 0.0
         for i in range(self.N):
@@ -199,7 +170,7 @@ class SCCluster:
             # average it and divide by 6*deltaT*step (also 6*total_time)
         diffusitivity /= (6*self.N*self.time)
         return diffusitivity
-
+    '''
     def MD_step(self):
         self.time += DT
         for first in self.particles:           
@@ -219,6 +190,7 @@ class SCCluster:
             dvy = sy*DT
             dvz = sz*DT
             first.add_velocity(dvx, dvy, dvz)
+            
         self.update_forces_and_energies()
 
         # update velocity at second half step with new forces
@@ -228,15 +200,22 @@ class SCCluster:
             dvz = (first.fz*DT)/(2*first.m)
             first.add_velocity(dvx, dvy, dvz)
 
-        self.update_observables()            
-        self.Bussi_Thermostat()
+        #self.update_observables()            
+        self.Bussi_Thermostat()        
 
-        # save global minimum configuration
-        if self.system_potential_energy < self.best_potential_energy:
-            print "true"
-            self.best_potential_energy = self.system_potential_energy
-            self.best_total_energy = self.system_total_energy
-            self.best_config = []
-            for p in self.particles:
-                self.best_config.append(p.position())
-        
+
+
+
+a = SCCluster(metal="gold")
+
+for i in range(5000):
+    print "running " + str(i)
+    a.MD_step()
+    fs = "mov/mov" + str(i) + ".xyz"
+    f = open(fs,'w')
+    print >>f, "108\n"
+    for i in range(a.N):
+        print >>f, "MG\t" + str(a.particles[i].x) + " " + \
+              str(a.particles[i].y) + " " + \
+              str(a.particles[i].z)
+    f.close()
