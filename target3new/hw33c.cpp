@@ -104,6 +104,8 @@ float BoxMueller() {
 float force [14][108][3];				// Forces on each particle
 float position [14][108][3];			// Position of current configuration of particles
 float PositionAtTimeZero [108][3];			
+float diffusitivity[650];
+float diffusitivity_time[650];
 float best_configuration [14][108][3];		// Position of best configurations of particles
 float best_v [14];
 float best_k [14];
@@ -117,6 +119,7 @@ float setpoint_temperature [14];
 
 float num_replicas = 14;
 int N = 108;						// Number of particles for each configuration
+int num_diffus_samples = 650;
 float tau = 0.0001;                  // Parameter used with Bussi Thermostat, equilibration time
 
 
@@ -154,12 +157,7 @@ void GetInitPositionsAndInitVelocities () {
 			velocity[h][i][1] = k * BoxMueller();
 			velocity[h][i][2] = k * BoxMueller();
 		}
-
-                // save copy for diffusitivity calculation later
-		PositionAtTimeZero[i][0] = xi;
-		PositionAtTimeZero[i][1] = yi;
-		PositionAtTimeZero[i][2] = zi;
-			
+	
 		i++;	
 		fgetpos (filePosition, &pos);
 		fscanf (filePosition, "%f %f %f" , &xi, &yi, &zi);
@@ -222,23 +220,23 @@ void CalcForces(float box, float rcut, float a, float c, float m, float n){
 	  //deltaZ -= (box * round(deltaZ/box));
 		
 	  r2 = ( ( deltaX*deltaX ) +  ( deltaY*deltaY ) + ( deltaZ*deltaZ) );
-	  rcut2 = rcut * rcut;
+	  //rcut2 = rcut * rcut;
 
-	  if (r2 < rcut2){
-	    // Do calculation
-	    a_r = a / sqrt(r2);
-	    Vcalc += pow(a_r, n);
+	  //if (r2 < rcut2){
+	  // Do calculation
+	  a_r = a / sqrt(r2);
+	  Vcalc += pow(a_r, n);
 	    
-	    tmp_f = ( n*pow(a_r, n) - (c/2.0)*m*(pow(rho_all[h][i],-0.5) + pow(rho_all[h][j],-0.5))*pow(a_r, m) ) / r2;
+	  tmp_f = ( n*pow(a_r, n) - (c/2.0)*m*(pow(rho_all[h][i],-0.5) + pow(rho_all[h][j],-0.5))*pow(a_r, m) ) / r2;
 
-	    force[h][i][0] += deltaX * tmp_f;
-	    force[h][i][1] += deltaY * tmp_f;
-	    force[h][i][2] += deltaZ * tmp_f;
-	    // remove double-counting
-	    //force[h][j][0] -= deltaX * tmp_f;
-	    //force[h][j][1] -= deltaY * tmp_f;
-	    //force[h][j][2] -= deltaZ * tmp_f;
-	  }
+	  force[h][i][0] += deltaX * tmp_f;
+	  force[h][i][1] += deltaY * tmp_f;
+	  force[h][i][2] += deltaZ * tmp_f;
+	  // remove double-counting
+	  //force[h][j][0] -= deltaX * tmp_f;
+	  //force[h][j][1] -= deltaY * tmp_f;
+	  //force[h][j][2] -= deltaZ * tmp_f;
+	  //}
 	}
       }
       potential_energy[h] += 0.5*Vcalc - c * sqrt(rho_all[h][i]);
@@ -397,10 +395,23 @@ int get_best_global_config() {
 }
 
 
+void set_position_at_time_zero() {
+  // save copy for diffusitivity calculation later
+  for (int i=0; i<N; i++) {
+    PositionAtTimeZero[i][0] = position[0][i][0];
+    PositionAtTimeZero[i][1] = position[0][i][1];
+    PositionAtTimeZero[i][2] = position[0][i][2];
+  }
+}
+
 int main(int argc, char** argv){
 
   // declare metal properties
   float m, a, n, c, density;
+  FILE * fileData;
+  FILE * fileBestConfig;
+  FILE * fileResults;
+  FILE * fileDiffusion;
   
   // check for second and third arguments, and initialize metal properties accordingly
   if (argc < 2) {
@@ -414,6 +425,10 @@ int main(int argc, char** argv){
     c = gold_c;
     density = gold_density;
     setpoint_temperature[0] = gold_temperature;
+    fileData = fopen("GOLD.RESULTS", "w");
+    fileBestConfig = fopen("GOLD_BEST_CONFIG.TXT", "w");
+    fileResults = fopen("GOLD.DATA", "w");
+    fileDiffusion = fopen("GOLD_DIFFUSION.DATA", "w");
   }
   else if (strcmp(argv[1],"silver") == 0) {
     m = silver_m;
@@ -422,35 +437,37 @@ int main(int argc, char** argv){
     c = silver_c;
     density = silver_density;
     setpoint_temperature[0] = silver_temperature;
+    fileData = fopen("SILVER.RESULTS", "w");
+    fileBestConfig = fopen("SILVER_BEST_CONFIG.TXT", "w");
+    fileResults = fopen("SILVER.DATA", "w");
+    fileDiffusion = fopen("SILVER_DIFFUSION.DATA", "w");
   }
   else {
     std::cout << "Argument must be \'gold\' or \'silver\'\n\n";
     return -1;
   }
 
-  // declaring variables
-  int timestart = time (NULL), timend, steps = 50000;		                             // Number of time steps to take
+  // declaring variables, num timesteps to take, and d_s, the index of diffusitivity[]
+  int timestart = time (NULL), timend, steps = 50000, d_s = 0;
   float timeEvolved, deltaT = 0.001;     // Size of time step
   float b = pow(abs(N/density) , (1.0/3.0));
   float rc = b/2;
   
-  // open files for write
-  FILE * fileData;
-  fileData = fopen("Results.txt", "w");
+  // check files are okay
   if (fileData == NULL) {
     std::cout << "Unable to open Results.txt" << std::endl;
     exit(1); // terminate with error
   }    
-  FILE * fileBestConfig;
-  fileBestConfig = fopen("BestConfig.txt", "w");
   if (fileBestConfig == NULL) {
     std::cout << "Unable to open BestConfig.txt" << std::endl;
     exit(1); // terminate with error
   } 
-  FILE * fileResults;
-  fileResults = fopen("Data.txt", "w");
   if (fileResults == NULL) {
     std::cout << "Unable to open Data.txt" << std::endl;
+    exit(1); // terminate with error
+  }
+  if (fileDiffusion == NULL) {
+    std::cout << "Unable to open Diffusion.txt" << std::endl;
     exit(1); // terminate with error
   }
     
@@ -521,6 +538,18 @@ int main(int argc, char** argv){
     save_best_config();
     
     timeEvolved = (i+1) * deltaT;      
+
+    // set time zero for diffusitivity calculations, after equilibrium is reached (30000 steps)
+    if (steps > 30000)
+      set_position_at_time_zero();
+    
+    // calculate diffusitivity at intervals after equilibrium (30000 steps)
+    if ((steps > 30000) && (steps%30 == 0) && (d_s < num_diffus_samples)) {
+      diffusitivity[d_s] = CalculateDiffusitivity(timeEvolved, b);
+      diffusitivity_time[d_s] = timeEvolved - (30000.0*deltaT);
+      d_s++;
+    }
+
     fprintf (fileData, "%f \t%f \t%f \t%f \t%f\n", timeEvolved, total_energy[0], potential_energy[0], kinetic_energy[0], current_temperature[0]);  
     
   }
@@ -532,7 +561,7 @@ int main(int argc, char** argv){
   fprintf (fileResults, "Potential Energy = %f\n", potential_energy[0]);
   fprintf (fileResults, "Kinetic Energy = %f\n", kinetic_energy[0]);
   fprintf (fileResults, "Binding Energy (V/N) = %f\n", potential_energy[0] / N);
-  fprintf (fileResults, "Diffusitivity = %f\n\n", CalculateDiffusitivity(timeEvolved, b));
+  //fprintf (fileResults, "Diffusitivity = %f\n\n", CalculateDiffusitivity(timeEvolved, b));
 
   fprintf (fileResults, "Global Minimum Search Results (found by Replica Exchange MD):\n");
   fprintf (fileResults, "Global Potential Energy Minimnum (V at best config) = %f\n", best_v[BEST]);
@@ -549,80 +578,95 @@ int main(int argc, char** argv){
     fprintf (fileBestConfig, "%f \t%f \t%f\n", best_configuration[BEST][i][0], best_configuration[BEST][i][1], best_configuration[BEST][i][2]);
   }
     
+  // print diffusion data
+  fprintf (fileDiffusion, "Diffusitivity Plot"
+  fprintf (fileDiffusion, "Time \t\tDiffusitivity\n");
+  for (int i = 0; i < num_diffus_samples; i++) {
+    fprintf (fileDiffusion, "%f \t%f\n", diffusitivity_time[i], diffusitivity[i]);
+  }
+
   fclose (fileBestConfig);
   fclose (fileData);
   fclose (fileResults);
+  fclose (fileDiffusion);
   
   return 0;
 }
 
+/*
+  void calcDiff(int Switch, Coord* ct, int time, double dt, int N) {
+    int t0index,i,j,n,CorrelTime;
+    static int t0time[MAXT0],t0Counter,SampleCounter[MAXT];
+    static double Vacf[MAXT],R2[MAXT];
+    static Coord* c0 = new Coord[N*MAXT0];
+    FILE *FilePtrMsd;
+    switch(Switch) {
+      // initialize everything
+    case INITIALIZE:
+      t0Counter=0;
+      for(i=0;i<MAXT;i++) {
+	  R2[i]=0.0;
+	  SampleCounter[i]=0;
+	}
+      break;
+    case SAMPLE:
+      if((time % FREQT0)==0) {
+	  // new time origin
+	  // store the positions/velocities; the current velocities
+	  // are ct.vx[i] and the current positions are ct.x[i] (and y and z).
+	// question: why do you have to be careful with Pbc ?
+	// 1. set t0index, t0counter and t0time[t0index]
+	t0Counter++;
+	t0index = (t0Counter - 1) % MAXT0;
+	t0time[t0index] = time;
+	// 2. store particle positions/velocities in c0, etc
+	// to access position e.g particle i in x-dir, use ct[i].x
+	// question: why should we use ct instead of c ?????
+	for(i = 0; i < N; i++){
+	  c0[i+N*t0index].x = ct[i].x;
+	  c0[i+N*t0index].y = ct[i].y;
+	  c0[i+N*t0index].z = ct[i].z;
+	  // end modification
+	}
+    }
+    // loop over all time origins that have been stored
+    for(j=0;j<min(t0Counter,MAXT0);j++) {
+      CorrelTime=time-t0time[j];
+      // only if the time difference is shorter than the
+      maximum correlation time
+	// then add to R2
+	if(CorrelTime < MAXT){
+	  SampleCounter[CorrelTime]++;
+	  for(n = 0; n < N; n++){
+	    R2[CorrelTime] += (ct[n].x - c0[n+j*N].x)*(ct[n].x - c0[n+j*N].x);
+	    R2[CorrelTime] += (ct[n].y - c0[n+j*N].y)*(ct[n].y - c0[n+j*N].y);
+	    R2[CorrelTime] += (ct[n].z - c0[n+j*N].x)*(ct[n].z - c0[n+j*N].z);
+	  }
+	}
+    }
+    break;
+  case WRITE_RESULTS:
+    // write everything to disk
+    FilePtrMsd=fopen("msd.dat","w");
+    for(i=0;i<MAXT-1;i++) {
+	if(SampleCounter[i]>0) {
+	    R2[i]/=(double)(N*SampleCounter[i]);
+	  }
+	else{
+	    R2[i]=0.0;
+	}
+	if(i>=(1.0/dt) )
+	  fprintf(FilePtrMsd,"%lf %lf %lf %lf\n",(i+1)*dt,R2[i],R2[i]/(6.0*(i+1)*dt), (1.0/6.0) * (R2[i]-R2[(int)(1.0/dt)])/(dt*(i-(1.0/dt))) );
+	else if(i>=1) {
+	    fprintf(FilePtrMsd,"%lf %lf %lf\n",(i+1)*dt,R2[i],R2[i]/(6.0*(i+1)*dt));
+	}
+	else
+	  fprintf(FilePtrMsd,"%lf %lf %lf\n",(i+1)*dt,R2[i],0.0);
+    }
+    fclose(FilePtrMsd);
+    }
+  }
 
 
 
-
-
-
-
-
-
-
-	/*    
-    float u1, u2, u3, u4;			// Uniform random numbers to be pulled from RAN3
-	float r;
-	float g1, g2, g3, g4;			// Gaussian random number
-	//~ float Vx, Vy, Vz;						// Velocities to be generated
-   
-    for (int i = 0; i < N; i++){		
-        u1 = RAN3();
-        u2 = RAN3();
-        u3 = RAN3();
-        u4 = RAN3();
-        //~ u5 = RAN3();
-        //~ u6 = RAN3();
-        //~ printf ("Random values: u1 = %f, u2 = %f, u3 = %f, u4 = %f, u5 = %f and u6 = %f\n", u1, u2, u3, u4, u5, u6);
-        
-        u1 = (2.0 * u1) - 1.0;
-        u2 = (2.0 * u2) - 1.0;
-        u3 = (2.0 * u3) - 1.0;
-        u4 = (2.0 * u4) - 1.0;
-        //~ u5 = (2.0 * u5) - 1.0;
-        //~ u6 = (2.0 * u6) - 1.0;
-        //~ 
-        //~ printf ("Random values transformed (-1, 1): u1 = %f, u2 = %f, u3 = %f, u4 = %f, u5 = %f and u6 = %f\n", u1, u2, u3, u4, u5, u6);
-        
-        first:
-        r = (u1 * u1) + (u2 * u2);
-        if ( (r < 1.0) && (r > 0.0) ){
-            r = sqrt( -2.0*log(r)/r );
-            g1 = u1 * r;
-            g2 = u2 * r;
-        }
-        else {
-            u1 = RAN3();
-            u2 = RAN3();
-            goto first;
-        }
-        
-        second:
-        r = (u3 * u3) + (u4 * u4);
-        if ( (r < 1.0) && (r > 0.0) ){
-            r = sqrt( -2.0*log(r)/r );
-            g3 = u3 * r;
-            g4 = u4 * r;
-        }
-        else {
-            u3 = RAN3();
-            u4 = RAN3();
-            goto second;
-        }
-        
-        //~ printf ("Gaussian values: g1 = %f, g2 = %f, g3 = %f, g4 = %f, g5 = %f and g6 = %f\n", g1, g2, g3, g4, g5, g6);
-        */
-
-
-	// Generate new velocities instead of reading in the old ones which were generated at a different temp.
-	// This uses actual simulation temperature
-
-	//for (int h=0; h<num_replicas; h++) {
-	  
-	//}
+ */
