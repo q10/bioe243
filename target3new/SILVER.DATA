@@ -1,0 +1,14 @@
+NOTE: POTENTIAL ENERGY IS GIVEN BY THE SUTTON-CHEN POTENTIAL.  KINETIC ENERGY IS GIVEN BY THE PARTICLES' VELOCITIES.
+Box length = 4.121285
+Starting Temperature = 0.952693
+Final Temperature = 58.894882
+Potential Energy = -80115.312500
+Kinetic Energy = 9364.286133
+Binding Energy (V/N) = -741.808449
+Global Minimum Search Results (found by Replica Exchange MD):
+Global Potential Energy Minimnum (V at best config) = -86530.570312
+Kinetic Energy at Global Minimnum = 7615.142090
+Total Energy at Global Minimnum = -78915.428223
+Binding Energy at Global Minimnum (V/N) = -801.208984
+
+26658 seconds to execute.
