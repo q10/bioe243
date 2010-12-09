@@ -350,7 +350,7 @@ float CalculateDiffusitivity(float timeEvolved, float box) {
     diffusitivity += deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ;
   }
 
-  diffusitivity /= (6*N*timeEvolved);
+  diffusitivity /= N;
   return diffusitivity;
 }
 
