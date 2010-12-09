@@ -453,7 +453,7 @@ int main(int argc, char** argv){
   }
 
   // declaring variables, num timesteps to take, and d_s, the index of diffusitivity[]
-  int timestart = time (NULL), timend, steps = 50000, d_s = 0;
+  int timestart = time (NULL), timend, steps = 20000, d_s = 0;
   float timeEvolved, deltaT = 0.001;     // Size of time step
   float b = pow(abs(N/density) , (1.0/3.0));
   float rc = b/2;
