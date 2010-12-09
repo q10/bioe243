@@ -429,10 +429,10 @@ int main(int argc, char** argv){
     c = gold_c;
     density = gold_density;
     setpoint_temperature[0] = gold_temperature;
-    fileData = fopen("GOLD.RESULTS", "w");
-    fileBestConfig = fopen("GOLD_BEST_CONFIG.TXT", "w");
-    fileResults = fopen("GOLD.DATA", "w");
-    fileDiffusion = fopen("GOLD_DIFFUSION.DATA", "w");
+    //fileData = fopen("GOLD.RESULTS", "w");
+    //fileBestConfig = fopen("GOLD_BEST_CONFIG.TXT", "w");
+    //fileResults = fopen("GOLD.DATA", "w");
+    fileDiffusion = fopen("GOLD_DIFFUSION.DATA2", "w");
   }
   else if (strcmp(argv[1],"silver") == 0) {
     m = silver_m;
@@ -441,10 +441,10 @@ int main(int argc, char** argv){
     c = silver_c;
     density = silver_density;
     setpoint_temperature[0] = silver_temperature;
-    fileData = fopen("SILVER.RESULTS", "w");
-    fileBestConfig = fopen("SILVER_BEST_CONFIG.TXT", "w");
-    fileResults = fopen("SILVER.DATA", "w");
-    fileDiffusion = fopen("SILVER_DIFFUSION.DATA", "w");
+    //fileData = fopen("SILVER.RESULTS", "w");
+    //fileBestConfig = fopen("SILVER_BEST_CONFIG.TXT", "w");
+    //fileResults = fopen("SILVER.DATA", "w");
+    fileDiffusion = fopen("SILVER_DIFFUSION.DATA2", "w");
     filecode=1;
   }
   else {
@@ -459,6 +459,7 @@ int main(int argc, char** argv){
   float rc = b/2;
   
   // check files are okay
+  /*
   if (fileData == NULL) {
     std::cout << "Unable to open Results.txt" << std::endl;
     exit(1); // terminate with error
@@ -471,6 +472,7 @@ int main(int argc, char** argv){
     std::cout << "Unable to open Data.txt" << std::endl;
     exit(1); // terminate with error
   }
+  */
   if (fileDiffusion == NULL) {
     std::cout << "Unable to open Diffusion.txt" << std::endl;
     exit(1); // terminate with error
