@@ -124,7 +124,7 @@ float tau = 0.0001;                  // Parameter used with Bussi Thermostat, eq
 
 
 // PARTICLE PROPERTIES
-float silver_e=2.5415E-3, silver_a=(4.09/3.20), silver_n=12, silver_m=6, silver_c=144.41, silver_density=0.153702761, silver_temperature=45.77;
+float silver_e=2.5415E-3, silver_a=(4.09/3.20), silver_n=12, silver_m=6, silver_c=144.41, silver_density=1.53702761, silver_temperature=45.77;
 float gold_e=1.2793E-2, gold_a=(4.08/2.70), gold_n=10, gold_m=8, gold_c=34.41, gold_density=0.92929022, gold_temperature=9.093;
 
 void GetInitPositionsAndInitVelocities () {
@@ -540,7 +540,7 @@ int main(int argc, char** argv){
     timeEvolved = (i+1) * deltaT;      
 
     // set time zero for diffusitivity calculations, after equilibrium is reached (30000 steps)
-    if (steps > 30000)
+    if (steps == 30000)
       set_position_at_time_zero();
     
     // calculate diffusitivity at intervals after equilibrium (30000 steps)
@@ -579,7 +579,7 @@ int main(int argc, char** argv){
   }
     
   // print diffusion data
-  fprintf (fileDiffusion, "Diffusitivity Plot"
+  fprintf (fileDiffusion, "Diffusitivity Plot\n\n");
   fprintf (fileDiffusion, "Time \t\tDiffusitivity\n");
   for (int i = 0; i < num_diffus_samples; i++) {
     fprintf (fileDiffusion, "%f \t%f\n", diffusitivity_time[i], diffusitivity[i]);
