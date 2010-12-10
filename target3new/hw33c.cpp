@@ -540,11 +540,11 @@ int main(int argc, char** argv){
     timeEvolved = (i+1) * deltaT;      
 
     // set time zero for diffusitivity calculations, after equilibrium is reached (30000 steps)
-    if (steps == 30000)
+    if (i == 30000)
       set_position_at_time_zero();
     
     // calculate diffusitivity at intervals after equilibrium (30000 steps)
-    if ((steps > 30000) && (steps%30 == 0) && (d_s < num_diffus_samples)) {
+    if ((i > 30000) && (i%30 == 0) && (d_s < num_diffus_samples)) {
       diffusitivity[d_s] = CalculateDiffusitivity(timeEvolved, b);
       diffusitivity_time[d_s] = timeEvolved - (30000.0*deltaT);
       d_s++;
