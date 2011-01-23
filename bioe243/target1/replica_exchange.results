@@ -1,0 +1,22 @@
+HEAT CAPACITIES - REPLICA EXCHANGE IS USED 
+Number of Cycles = 100
+Configuration 1; Temp = 0.100000; Energy = -16.666667; Heat Capacity = -237.499236
+Configuration 2; Temp = 0.150000; Energy = -16.166667; Heat Capacity = -86.281358
+Configuration 3; Temp = 0.200000; Energy = -16.666667; Heat Capacity = -49.532448
+Configuration 4; Temp = 0.250000; Energy = -17.000000; Heat Capacity = -22.346844
+Configuration 5; Temp = 0.300000; Energy = -17.666667; Heat Capacity = -12.171728
+Configuration 6; Temp = 0.350000; Energy = -20.000000; Heat Capacity = 0.394240
+Configuration 7; Temp = 0.400000; Energy = -19.916667; Heat Capacity = 3.489909
+Configuration 8; Temp = 0.450000; Energy = -23.166667; Heat Capacity = 14.954746
+Configuration 9; Temp = 0.500000; Energy = -28.583333; Heat Capacity = 72.496111
+Configuration 10; Temp = 0.550000; Energy = -21.416667; Heat Capacity = 46.680064
+Configuration 11; Temp = 0.600000; Energy = -17.250000; Heat Capacity = 24.167398
+Configuration 12; Temp = 0.650000; Energy = -16.083333; Heat Capacity = 4.067079
+Configuration 13; Temp = 0.700000; Energy = -17.583333; Heat Capacity = 31.321434
+Configuration 14; Temp = 0.750000; Energy = -13.750000; Heat Capacity = 13.534736
+Configuration 15; Temp = 0.800000; Energy = -11.083333; Heat Capacity = 10.671272
+Configuration 16; Temp = 0.850000; Energy = -6.750000; Heat Capacity = 37.594059
+Configuration 17; Temp = 0.900000; Energy = -12.666667; Heat Capacity = 24.277671
+Configuration 18; Temp = 0.950000; Energy = -4.000000; Heat Capacity = 27.466870
+Configuration 19; Temp = 1.000000; Energy = -5.833333; Heat Capacity = 24.586122
+Configuration 20; Temp = 1.050000; Energy = -1.750000; Heat Capacity = 12.796762
