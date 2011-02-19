@@ -1,5 +1,6 @@
 //      HW#1 Question 2b.cpp
 //      BE243
+//      bm <bm AT berkeley DOT edu>
 //      Stuart Howes <showes@berkeley.edu>
 
 /*
